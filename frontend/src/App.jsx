@@ -31,7 +31,6 @@ function MetricTrendChart({
             No samples available
           </span>
         </div>
-
         <div className="trend-empty">
           Waiting for CloudWatch samples…
         </div>
@@ -68,7 +67,6 @@ function MetricTrendChart({
             {validSamples.length} samples · {metric}
           </p>
         </div>
-
         <div className="trend-current">
           <strong>{latest.value}%</strong>
           <span>Latest</span>
@@ -82,27 +80,6 @@ function MetricTrendChart({
           role="img"
           aria-label={`${title} trend chart`}
         >
-          <defs>
-            <linearGradient
-              id={`area-${metric}`}
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <stop
-                offset="0%"
-                stopColor={color}
-                stopOpacity="0.28"
-              />
-              <stop
-                offset="100%"
-                stopColor={color}
-                stopOpacity="0"
-              />
-            </linearGradient>
-          </defs>
-
           {[0, 25, 50, 75, 100].map((tick) => (
             <g key={tick}>
               <line
@@ -112,7 +89,6 @@ function MetricTrendChart({
                 y2={y(tick)}
                 className="trend-grid-line"
               />
-
               <text
                 x={padding.left - 9}
                 y={y(tick) + 4}
@@ -133,20 +109,12 @@ function MetricTrendChart({
           />
 
           <path
-            d={`${pathData} L ${x(validSamples.length - 1)} ${
-              height - padding.bottom
-            } L ${x(0)} ${height - padding.bottom} Z`}
-            fill={`url(#area-${metric})`}
-          />
-
-          <path
             d={pathData}
             fill="none"
             stroke={color}
             strokeWidth="3"
             strokeLinejoin="round"
             strokeLinecap="round"
-            className="trend-line"
           />
 
           {validSamples.map((point, index) => (
@@ -156,7 +124,6 @@ function MetricTrendChart({
               cy={y(Number(point.value))}
               r={index === validSamples.length - 1 ? 4.5 : 2.2}
               fill={color}
-              className="trend-point"
             >
               <title>
                 {`${point.value}%${
@@ -252,8 +219,7 @@ function App() {
       );
     }
   };
-
-  const fetchAudit = async (incidentId) => {
+    const fetchAudit = async (incidentId) => {
     try {
       const response = await fetch(
         `${API_URL}/incidents/${incidentId}/remediation/audit`
@@ -362,17 +328,13 @@ function App() {
 
   useEffect(() => {
     fetchData();
-
     const interval = setInterval(fetchData, 10000);
-
     return () => clearInterval(interval);
   }, []);
 
   const latestPoint = (metric) => {
     const points = metrics?.[metric];
-
     if (!points?.length) return null;
-
     return points[points.length - 1];
   };
 
@@ -524,22 +486,14 @@ function App() {
 
     return records.map((record) => (
       <div key={record.id} className="audit-record">
-        <p>
-          <strong>Action:</strong> {record.action}
-        </p>
-        <p>
-          <strong>Result:</strong> {record.result}
-        </p>
-        <p>
-          <strong>Mode:</strong> {record.mode}
-        </p>
+        <p><strong>Action:</strong> {record.action}</p>
+        <p><strong>Result:</strong> {record.result}</p>
+        <p><strong>Mode:</strong> {record.mode}</p>
         <p>
           <strong>Executed:</strong>{" "}
           {Boolean(record.executed) ? "Yes" : "No"}
         </p>
-        <p>
-          <strong>Time:</strong> {record.created_at}
-        </p>
+        <p><strong>Time:</strong> {record.created_at}</p>
         {record.message && <p>{record.message}</p>}
       </div>
     ));
@@ -550,9 +504,7 @@ function App() {
 
     if (evidenceErrors[incidentId]) {
       return (
-        <div className="error">
-          {evidenceErrors[incidentId]}
-        </div>
+        <div className="error">{evidenceErrors[incidentId]}</div>
       );
     }
 
@@ -574,8 +526,7 @@ function App() {
         </p>
 
         <p>
-          <strong>Evidence scope:</strong>{" "}
-          {evidence.evidence_scope}
+          <strong>Evidence scope:</strong> {evidence.evidence_scope}
         </p>
 
         <p>{evidence.message}</p>
@@ -591,25 +542,20 @@ function App() {
               <h4>Snapshot #{snapshot.id}</h4>
 
               <p>
-                <strong>Captured at:</strong>{" "}
-                {snapshot.captured_at}
+                <strong>Captured at:</strong> {snapshot.captured_at}
               </p>
-
               <p>
                 <strong>Capture reason:</strong>{" "}
                 {snapshot.capture_reason}
               </p>
-
               <p>
                 <strong>Collection status:</strong>{" "}
                 {snapshot.collection_status}
               </p>
-
               <p>
                 <strong>Incident metric value:</strong>{" "}
                 {snapshot.metric_value}%
               </p>
-
               <p>
                 <strong>Threshold:</strong> {snapshot.threshold}%
               </p>
@@ -629,7 +575,6 @@ function App() {
                         <th>Memory %</th>
                       </tr>
                     </thead>
-
                     <tbody>
                       {snapshot.process_data.processes.map(
                         (process) => (
@@ -663,8 +608,7 @@ function App() {
       </div>
     );
   };
-
-  const metricCards = [
+    const metricCards = [
     {
       key: "CPUUtilization",
       title: "CPU Usage",
@@ -675,380 +619,417 @@ function App() {
       key: "MemoryUtilization",
       title: "Memory Usage",
       description: "EC2 Instance",
-      color: "#a78bfa",
+      color: "#a879ff",
     },
     {
       key: "DiskUtilization",
       title: "Disk Usage",
       description: "Root Volume",
-      color: "#34d399",
+      color: "#18e5e5",
     },
   ];
 
   return (
-    <div className="dashboard">
-      <header id="top">
-        <div className="brand-lockup">
-          <span className="brand-orbit" aria-hidden="true">
-            N
-          </span>
+    <div className="nexora-app" id="top">
+      <aside className="sidebar">
+        <a className="sidebar-brand" href="#top">
+          <span className="brand-cloud">☁</span>
+          <span>NEXORA</span>
+        </a>
 
-          <div>
+        <nav className="sidebar-nav" aria-label="Main navigation">
+          <a className="sidebar-link active" href="#top">
+            <span className="nav-icon">▦</span>Dashboard
+          </a>
+          <a className="sidebar-link" href="#active-incidents">
+            <span className="nav-icon">♧</span>Incidents
+          </a>
+          <a className="sidebar-link" href="#incident-history">
+            <span className="nav-icon">◷</span>History
+          </a>
+          <a className="sidebar-link" href="#timeline">
+            <span className="nav-icon">⌘</span>Timeline
+          </a>
+          <a className="sidebar-link" href="#platform-info">
+            <span className="nav-icon">▤</span>Reports
+          </a>
+        </nav>
+
+        <div className="sidebar-art" aria-hidden="true">
+          <div className="side-orb side-orb-a" />
+          <div className="side-orb side-orb-b" />
+          <div className="side-cloud">☁</div>
+          <div className="side-server">
+            <i /><i /><i />
+          </div>
+          <div className="side-glow" />
+        </div>
+
+        <div className="sidebar-caption">
+          <h2>Cloud<br />Reliability<br />Platform</h2>
+          <p>
+            Monitor <b>·</b> Detect<br />
+            Diagnose <b>·</b> Remediate
+          </p>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <div className="topbar">
+          <label className="search-box">
+            <span>⌕</span>
+            <input
+              aria-label="Search incidents and metrics"
+              placeholder="Search incidents, metrics..."
+              onChange={(event) => {
+                const query = event.target.value.toLowerCase();
+                document.querySelectorAll(".history-item").forEach(
+                  (item) => {
+                    item.style.display = item.textContent
+                      .toLowerCase()
+                      .includes(query)
+                      ? ""
+                      : "none";
+                  }
+                );
+              }}
+            />
+          </label>
+
+          <div className={`top-status ${systemStatusClass}`}>
+            <i /> {systemStatus}
+          </div>
+
+          <div className="topbar-right">
+            <span className="refresh-symbol">⟳</span>
+            <div className="updated-label">
+              <small>Last updated</small>
+              <strong>
+                {lastSuccessfulFetch
+                  ? lastSuccessfulFetch.toLocaleTimeString()
+                  : "--:--:--"}
+              </strong>
+            </div>
+            <span className="topbar-bell">♧</span>
+            <span className="topbar-avatar">●</span>
+          </div>
+        </div>
+
+        {error && <div className="error global-error">{error}</div>}
+        {actionError && (
+          <div className="error global-error">{actionError}</div>
+        )}
+
+        <section className="hero-section">
+          <div className="hero-copy">
+            <span>Welcome to</span>
             <h1>NEXORA</h1>
             <p>Cloud Reliability &amp; Monitoring Platform</p>
           </div>
-        </div>
 
-        <div className="header-meta">
-          <span className="system-label">
-            CLOUD OPERATIONS CENTER
-          </span>
+          <div className="hero-art" aria-hidden="true">
+            <div className="hero-cloud">☁</div>
+            <div className="hero-cloud-small">☁</div>
+            <div className="hero-server hero-server-a">
+              <i /><i /><i />
+            </div>
+            <div className="hero-globe">
+              <div className="globe-line globe-line-one" />
+              <div className="globe-line globe-line-two" />
+              <div className="globe-line globe-line-three" />
+            </div>
+            <div className="hero-server hero-server-b">
+              <i /><i /><i />
+            </div>
+            <span className="hero-star hero-star-a" />
+            <span className="hero-star hero-star-b" />
+            <span className="hero-star hero-star-c" />
+          </div>
+        </section>
 
-          <span className="system-indicator">
-            <span className="freshness-dot" />
-            LIVE TELEMETRY
-          </span>
-        </div>
-      </header>
+        <section className="health-grid" id="overview">
+          <article className="health-card health-green">
+            <div className="health-icon">▤</div>
+            <div>
+              <strong>{freshMetricCount} / {healthSummary.length}</strong>
+              <span>Fresh Metrics</span>
+              <small>Latest sample within {METRIC_MAX_AGE_SECONDS}s</small>
+            </div>
+          </article>
 
-      <nav className="top-nav" aria-label="Dashboard navigation">
-        <a className="nav-brand" href="#top">
-          NEXORA <span>OPS</span>
-        </a>
+          <article className="health-card health-amber">
+            <div className="health-icon">◷</div>
+            <div>
+              <strong>{staleMetricCount}</strong>
+              <span>Stale Metrics</span>
+              <small>Older than {METRIC_MAX_AGE_SECONDS}s</small>
+            </div>
+          </article>
 
-        <div className="nav-links">
-          <a href="#overview">Overview</a>
-          <a href="#trends">Metrics</a>
-          <a href="#active-incidents">Incidents</a>
-          <a href="#timeline">Timeline</a>
-        </div>
+          <article className="health-card health-purple">
+            <div className="health-icon">☁</div>
+            <div>
+              <strong>{noDataMetricCount}</strong>
+              <span>Metrics Without Data</span>
+              <small>No usable timestamp</small>
+            </div>
+          </article>
 
-        <span className="nav-live">
-          <span className="freshness-dot" />
-          SYSTEM ONLINE
-        </span>
-      </nav>
+          <article className="health-card health-blue">
+            <div className="health-icon">♢</div>
+            <div>
+              <strong>{incidents.length}</strong>
+              <span>Active Incidents</span>
+              <small>Currently reported as open</small>
+            </div>
+          </article>
+        </section>
 
-      <div className={`status ${systemStatusClass}`}>
-        <span className="status-dot" />
-        {systemStatus}
-      </div>
+        <section className="trend-grid" id="trends">
+          {metricCards.map((metric, index) => (
+            <article
+              className={`metric-panel metric-panel-${index}`}
+              key={metric.key}
+              style={{ "--metric-color": metric.color }}
+            >
+              <div className="metric-panel-head">
+                <div className="metric-icon">
+                  {index === 0 ? "▦" : index === 1 ? "▣" : "▤"}
+                </div>
 
-      {error && <div className="error">{error}</div>}
-      {actionError && <div className="error">{actionError}</div>}
-
-      {/* Metric overview */}
-      <div className="cards" id="overview">
-        {metricCards.map((metric) => {
-          const freshness = metricFreshness(metric.key);
-          const point = latestPoint(metric.key);
-          const value = latestValue(metric.key);
-
-          return (
-            <div className="card" key={metric.key}>
-              <div className="metric-card-heading">
-                <h2>{metric.title}</h2>
+                <div className="metric-name">
+                  <h2>{metric.title}</h2>
+                  <p>{metric.description}</p>
+                </div>
 
                 <span
-                  className={`freshness-badge ${freshness.className}`}
-                  title={
-                    point?.timestamp
-                      ? `CloudWatch sample: ${new Date(
-                          point.timestamp
-                        ).toLocaleString()}`
-                      : "No timestamp available"
-                  }
+                  className={`freshness-badge ${
+                    metricFreshness(metric.key).className
+                  }`}
                 >
-                  <span className="freshness-dot" />
-                  {freshness.label}
+                  <i />
+                  {metricFreshness(metric.key).label}
                 </span>
               </div>
 
-              <div className="value">
-                {value}
-                {value !== "--" ? "%" : ""}
+              <div className="metric-current">
+                <strong>
+                  {latestValue(metric.key)}
+                  {latestValue(metric.key) !== "--" ? "%" : ""}
+                </strong>
+                <small>Latest</small>
               </div>
 
-              <p>{metric.description}</p>
+              <MetricTrendChart
+                title={metric.title}
+                metric={metric.key}
+                points={metrics?.[metric.key]}
+                color={metric.color}
+              />
 
-              <p className="metric-updated">
-                {point?.timestamp &&
-                Number.isFinite(new Date(point.timestamp).getTime())
-                  ? `Last updated: ${new Date(
-                      point.timestamp
-                    ).toLocaleTimeString()}`
-                  : "No metric timestamp available"}
+              <p className="metric-samples">
+                {(metrics?.[metric.key] || []).slice(-30).length} samples
+                <span> · </span>
+                {metric.key}
               </p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Infrastructure health */}
-      <section className="health-overview" id="health">
-        <div className="section-heading">
-          <div>
-            <h2>Infrastructure Health Overview</h2>
-            <p>
-              Summary of reported metrics and active incidents
-            </p>
-          </div>
-        </div>
-
-        <div className="health-overview-grid">
-          <div className="health-overview-card">
-            <span>Fresh Metrics</span>
-            <strong>
-              {freshMetricCount} / {healthSummary.length}
-            </strong>
-            <small>
-              Latest sample within {METRIC_MAX_AGE_SECONDS} seconds
-            </small>
-          </div>
-
-          <div className="health-overview-card">
-            <span>Stale Metrics</span>
-            <strong>{staleMetricCount}</strong>
-            <small>
-              Samples older than {METRIC_MAX_AGE_SECONDS} seconds
-            </small>
-          </div>
-
-          <div className="health-overview-card">
-            <span>Metrics Without Data</span>
-            <strong>{noDataMetricCount}</strong>
-            <small>No usable timestamp available</small>
-          </div>
-
-          <div className="health-overview-card">
-            <span>Active Incidents</span>
-            <strong>{incidents.length}</strong>
-            <small>Incidents currently reported as open</small>
-          </div>
-        </div>
-
-        <p className="health-overview-updated">
-          {lastSuccessfulFetch
-            ? `Dashboard data last refreshed at ${lastSuccessfulFetch.toLocaleTimeString()}`
-            : "Waiting for the first successful backend refresh"}
-        </p>
-      </section>
-
-      {/* Metric trends */}
-      <section className="trends-section" id="trends">
-        <div className="section-heading">
-          <div>
-            <h2>Metric Trends</h2>
-            <p>
-              Recent CloudWatch samples · refreshes every 10 seconds
-            </p>
-          </div>
-
-          <span className="trend-live-indicator">
-            <span className="freshness-dot" />
-            AUTO-REFRESH
-          </span>
-        </div>
-
-        <div className="trend-grid">
-          {metricCards.map((metric) => (
-            <MetricTrendChart
-              key={metric.key}
-              title={metric.title}
-              metric={metric.key}
-              points={metrics?.[metric.key]}
-              color={metric.color}
-            />
+            </article>
           ))}
-        </div>
-      </section>
+        </section>
 
-      {/* Active incidents */}
-      <section className="incidents" id="active-incidents">
-        <h2>Active Incidents</h2>
-
-        {incidents.length === 0 ? (
-          <div className="no-incidents">
-            ✓ No active incidents detected
-          </div>
-        ) : (
-          incidents.map((incident) => (
-            <div className="incident" key={incident.id}>
+        <section className="operations-grid">
+          <article className="panel active-panel" id="active-incidents">
+            <div className="panel-heading">
+              <span className="panel-icon">♧</span>
               <div>
-                <strong>⚠ {incident.metric}</strong>
-                <p>{incident.message}</p>
+                <h2>Active Incidents</h2>
+                <p>Real-time detection of infrastructure issues</p>
               </div>
+            </div>
 
-              <div className="incident-details">
-                <span>{incident.value}%</span>
-                <span>Threshold: {incident.threshold}%</span>
-                <span>{incident.severity}</span>
-              </div>
-
-              <button
-                onClick={() => requestRemediation(incident.id)}
-                disabled={Boolean(loading[incident.id])}
-              >
-                {loading[incident.id]
-                  ? "Generating..."
-                  : "Recommend Remediation"}
-              </button>
-
-              {recommendations[incident.id] && (
-                <div className="remediation-result">
-                  <h3>Recommendation</h3>
-
+            {incidents.length === 0 ? (
+              <div className="incident-clear">
+                <span className="clear-check">✓</span>
+                <div>
+                  <h3>No active incidents detected</h3>
                   <p>
-                    <strong>Action:</strong>{" "}
-                    {recommendations[incident.id].action}
-                  </p>
-
-                  <p>
-                    <strong>Mode:</strong>{" "}
-                    {recommendations[incident.id].mode}
-                  </p>
-
-                  <p>{recommendations[incident.id].message}</p>
-
-                  <p>
-                    <strong>Executed:</strong>{" "}
-                    {String(
-                      recommendations[incident.id].executed
-                    )}
-                  </p>
-
-                  <p className="evidence-note">
-                    Recommendations are advisory. Check the execution
-                    status before assuming infrastructure was changed.
+                    All monitored metrics are within normal thresholds.
                   </p>
                 </div>
-              )}
-
-              {auditHistory[incident.id] && (
-                <details className="detail-panel">
-                  <summary>
-                    Remediation Audit History
-                    <span>VIEW RECORDS</span>
-                  </summary>
-
-                  <div className="detail-panel-body">
-                    {renderAuditRecords(incident.id)}
+                <div className="clear-shield">♢</div>
+              </div>
+            ) : (
+              incidents.map((incident) => (
+                <div className="incident-card" key={incident.id}>
+                  <div>
+                    <strong>
+                      #{incident.id} — {incident.metric}
+                    </strong>
+                    <p>{incident.message}</p>
+                    <small>
+                      Value: {incident.value}% · Severity: {incident.severity}
+                    </small>
                   </div>
-                </details>
-              )}
-            </div>
-          ))
-        )}
-      </section>
 
-      {/* Incident history */}
-      <section className="incidents" id="incident-history">
-        <h2>Incident History</h2>
+                  <button
+                    onClick={() => requestRemediation(incident.id)}
+                    disabled={Boolean(loading[incident.id])}
+                  >
+                    {loading[incident.id]
+                      ? "Generating…"
+                      : "Recommend Remediation"}
+                  </button>
 
-        {history.length === 0 ? (
-          <p>No incident history available.</p>
-        ) : (
-          history.map((incident) => (
-            <div className="incident" key={incident.id}>
+                  {recommendations[incident.id] && (
+                    <div className="remediation-result">
+                      <h3>Recommendation</h3>
+                      <p>
+                        <strong>Action:</strong>{" "}
+                        {recommendations[incident.id].action}
+                      </p>
+                      <p>
+                        <strong>Mode:</strong>{" "}
+                        {recommendations[incident.id].mode}
+                      </p>
+                      <p>{recommendations[incident.id].message}</p>
+                      <p>
+                        <strong>Executed:</strong>{" "}
+                        {String(recommendations[incident.id].executed)}
+                      </p>
+                    </div>
+                  )}
+
+                  {auditHistory[incident.id] && (
+                    <details className="detail-panel" open>
+                      <summary>Remediation Audit History</summary>
+                      {renderAuditRecords(incident.id)}
+                    </details>
+                  )}
+                </div>
+              ))
+            )}
+          </article>
+
+          <article className="panel history-panel" id="incident-history">
+            <div className="panel-heading">
+              <span className="panel-icon">▤</span>
               <div>
-                <strong>
-                  #{incident.id} — {incident.metric}
-                </strong>
-                <p>{incident.message}</p>
+                <h2>Incident History</h2>
+                <p>Past incidents and their resolution status</p>
               </div>
-
-              <div className="incident-details">
-                <span>{incident.status}</span>
-                <span>Value: {incident.value}%</span>
-                <span>Severity: {incident.severity}</span>
-              </div>
-
-              <div className="evidence-actions">
-                <button onClick={() => fetchAudit(incident.id)}>
-                  View Audit History
-                </button>
-
-                <button
-                  onClick={() => fetchEvidence(incident.id)}
-                  disabled={Boolean(evidenceLoading[incident.id])}
-                >
-                  {evidenceLoading[incident.id]
-                    ? "Loading Evidence..."
-                    : "View Process Evidence"}
-                </button>
-              </div>
-
-              {auditHistory[incident.id] && (
-                <details className="detail-panel">
-                  <summary>
-                    Remediation Audit History
-                    <span>VIEW RECORDS</span>
-                  </summary>
-
-                  <div className="detail-panel-body">
-                    {renderAuditRecords(incident.id)}
-                  </div>
-                </details>
-              )}
-
-              {(evidenceHistory[incident.id] ||
-                evidenceErrors[incident.id]) && (
-                <details className="detail-panel">
-                  <summary>
-                    Historical Process Evidence
-                    <span>VIEW SNAPSHOTS</span>
-                  </summary>
-
-                  <div className="detail-panel-body">
-                    {renderProcessEvidence(incident.id)}
-                  </div>
-                </details>
-              )}
+              <a className="view-all" href="#timeline">View All</a>
             </div>
-          ))
-        )}
-      </section>
 
-      {/* Incident timeline */}
-      <section className="incidents timeline-section" id="timeline">
-        <h2>Incident Timeline</h2>
+            {history.length === 0 ? (
+              <p className="empty-copy">No incident history available.</p>
+            ) : (
+              history.map((incident) => (
+                <div className="history-item" key={incident.id}>
+                  <div className="history-row">
+                    <span
+                      className={`history-check ${
+                        incident.status === "RESOLVED" ? "resolved" : "open"
+                      }`}
+                    >
+                      {incident.status === "RESOLVED" ? "✓" : "!"}
+                    </span>
 
-        <p className="timeline-description">
-          Recorded detection and recovery events from incident history.
-        </p>
+                    <div className="history-copy">
+                      <strong>
+                        #{incident.id} — {incident.metric}
+                      </strong>
+                      <p>{incident.message}</p>
+                      <small>
+                        Value: <b>{incident.value}%</b>
+                        <span>Severity: {incident.severity}</span>
+                      </small>
+                    </div>
 
-        <div className="timeline-list">
-          {renderIncidentTimeline()}
-        </div>
-      </section>
+                    <span
+                      className={`resolved-badge ${
+                        incident.status === "RESOLVED" ? "" : "open"
+                      }`}
+                    >
+                      {incident.status}
+                    </span>
+                  </div>
 
-      {/* Platform information */}
-      <section className="info" id="platform-info">
-        <h2>Nexora Monitoring</h2>
+                  <div className="history-actions">
+                    <button onClick={() => fetchAudit(incident.id)}>
+                      View Audit History
+                    </button>
+                    <button
+                      onClick={() => fetchEvidence(incident.id)}
+                      disabled={Boolean(evidenceLoading[incident.id])}
+                    >
+                      {evidenceLoading[incident.id]
+                        ? "Loading…"
+                        : "View Process Evidence"}
+                    </button>
+                  </div>
 
-        <p>
-          Nexora monitors cloud infrastructure metrics and detects
-          potential reliability issues.
-        </p>
+                  {auditHistory[incident.id] && (
+                    <details className="detail-panel" open>
+                      <summary>Remediation Audit History</summary>
+                      {renderAuditRecords(incident.id)}
+                    </details>
+                  )}
 
-        <p>
-          The dashboard refreshes its data every 10 seconds. Metric
-          freshness indicates whether the latest available sample is
-          recent; it does not guarantee that the infrastructure is
-          completely healthy.
-        </p>
+                  {(evidenceHistory[incident.id] ||
+                    evidenceErrors[incident.id]) && (
+                    <details className="detail-panel" open>
+                      <summary>Historical Process Evidence</summary>
+                      {renderProcessEvidence(incident.id)}
+                    </details>
+                  )}
+                </div>
+              ))
+            )}
+          </article>
+        </section>
 
-        <p>
-          Process snapshots provide diagnostic evidence. They do not
-          automatically prove the root cause of a past incident.
-        </p>
+        <section className="panel timeline-panel" id="timeline">
+          <div className="panel-heading">
+            <span className="panel-icon">♧</span>
+            <div>
+              <h2>Incident Timeline</h2>
+              <p>
+                Recorded detection and recovery events from incident history.
+              </p>
+            </div>
+            <div className="timeline-art" aria-hidden="true">
+              <div className="timeline-server">
+                <i /><i /><i />
+              </div>
+              <span>♢</span>
+              <div className="timeline-server">
+                <i /><i /><i />
+              </div>
+            </div>
+          </div>
+          <div className="timeline-list">{renderIncidentTimeline()}</div>
+        </section>
 
-        <p>
-          Recommendations are recorded in an audit trail. Remediation
-          remains in dry-run mode and does not execute infrastructure
-          changes.
-        </p>
-      </section>
+        <footer className="platform-footer" id="platform-info">
+          <h2>Nexora Monitoring</h2>
+          <p>
+            Nexora monitors cloud infrastructure metrics and detects potential
+            reliability issues.
+          </p>
+          <p>
+            The dashboard refreshes its data every 10 seconds. Metric freshness
+            indicates whether the latest available sample is recent; it does
+            not guarantee that the infrastructure is completely healthy.
+          </p>
+          <p>
+            Process snapshots provide diagnostic evidence. They do not
+            automatically prove the root cause of a past incident.
+          </p>
+          <p>
+            Recommendations are recorded in an audit trail. Remediation
+            remains in dry-run mode and does not execute infrastructure changes.
+          </p>
+        </footer>
+      </main>
     </div>
   );
 }
