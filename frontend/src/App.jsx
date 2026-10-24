@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import "./App.css";
 
@@ -27,9 +28,7 @@ function MetricTrendChart({
       <div className="trend-card">
         <div className="trend-card-heading">
           <h3>{title}</h3>
-          <span className="trend-subtitle">
-            No samples available
-          </span>
+          <span className="trend-subtitle">No samples available</span>
         </div>
         <div className="trend-empty">
           Waiting for CloudWatch samples…
@@ -49,6 +48,7 @@ function MetricTrendChart({
     ((100 - Math.max(0, Math.min(100, value))) / 100) *
       chartHeight;
 
+  // Fixed chart path expression.
   const pathData = validSamples
     .map((point, index) => {
       const value = Number(point.value);
@@ -174,6 +174,12 @@ function App() {
   const [metrics, setMetrics] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [history, setHistory] = useState([]);
+
+  // Detailed incident timeline state.
+  const [timelineHistory, setTimelineHistory] = useState({});
+  const [timelineLoading, setTimelineLoading] = useState({});
+  const [timelineErrors, setTimelineErrors] = useState({});
+
   const [recommendations, setRecommendations] = useState({});
   const [auditHistory, setAuditHistory] = useState({});
   const [evidenceHistory, setEvidenceHistory] = useState({});
@@ -186,15 +192,12 @@ function App() {
 
   const fetchData = async () => {
     try {
-      const [
-        metricsResponse,
-        incidentsResponse,
-        historyResponse,
-      ] = await Promise.all([
-        fetch(`${API_URL}/metrics`),
-        fetch(`${API_URL}/incidents`),
-        fetch(`${API_URL}/incidents/history`),
-      ]);
+      const [metricsResponse, incidentsResponse, historyResponse] =
+        await Promise.all([
+          fetch(`${API_URL}/metrics`),
+          fetch(`${API_URL}/incidents`),
+          fetch(`${API_URL}/incidents/history`),
+        ]);
 
       if (
         !metricsResponse.ok ||
@@ -219,7 +222,56 @@ function App() {
       );
     }
   };
-    const fetchAudit = async (incidentId) => {
+
+  // Fetch the timeline for one incident.
+  const fetchTimeline = async (incidentId) => {
+    setTimelineLoading((previous) => ({
+      ...previous,
+      [incidentId]: true,
+    }));
+
+    setTimelineErrors((previous) => ({
+      ...previous,
+      [incidentId]: "",
+    }));
+
+    try {
+      const response = await fetch(
+        `${API_URL}/incidents/${incidentId}/timeline`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Unable to load incident timeline"
+        );
+      }
+
+      // The API returns "timeline", not just "events".
+      const events = Array.isArray(data)
+        ? data
+        : data.timeline || data.events || [];
+
+      setTimelineHistory((previous) => ({
+        ...previous,
+        [incidentId]: events,
+      }));
+    } catch (err) {
+      setTimelineErrors((previous) => ({
+        ...previous,
+        [incidentId]:
+          err.message || "Could not load incident timeline.",
+      }));
+    } finally {
+      setTimelineLoading((previous) => ({
+        ...previous,
+        [incidentId]: false,
+      }));
+    }
+  };
+
+  const fetchAudit = async (incidentId) => {
     try {
       const response = await fetch(
         `${API_URL}/incidents/${incidentId}/remediation/audit`
@@ -314,6 +366,7 @@ function App() {
       }));
 
       await fetchAudit(incidentId);
+      await fetchTimeline(incidentId);
     } catch (err) {
       setActionError(
         err.message || "Unable to create recommendation."
@@ -328,9 +381,25 @@ function App() {
 
   useEffect(() => {
     fetchData();
+
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Automatically load timelines for incidents in history.
+  useEffect(() => {
+    history.forEach((incident) => {
+      const incidentId = incident.id;
+      const alreadyLoaded = Object.prototype.hasOwnProperty.call(
+        timelineHistory,
+        incidentId
+      );
+
+      if (!alreadyLoaded && !timelineLoading[incidentId]) {
+        fetchTimeline(incidentId);
+      }
+    });
+  }, [history, timelineHistory, timelineLoading]);
 
   const latestPoint = (metric) => {
     const points = metrics?.[metric];
@@ -423,63 +492,197 @@ function App() {
     return date.toLocaleString();
   };
 
+  // Render incident summaries and detailed timeline events.
   const renderIncidentTimeline = () => {
     if (history.length === 0) {
       return <p>No timeline events available yet.</p>;
     }
 
-    return history.map((incident) => (
-      <div className="timeline-item" key={incident.id}>
-        <div
-          className={`timeline-marker ${
-            incident.status === "RESOLVED" ? "resolved" : "open"
-          }`}
-        />
+    return history.map((incident) => {
+      const events = timelineHistory[incident.id];
 
-        <div className="timeline-content">
-          <div className="timeline-item-heading">
-            <strong>
-              Incident #{incident.id} — {incident.metric}
-            </strong>
+      return (
+        <div className="timeline-item" key={incident.id}>
+          <div
+            className={`timeline-marker ${
+              incident.status === "RESOLVED" ? "resolved" : "open"
+            }`}
+          />
 
-            <span
-              className={`timeline-status ${
-                incident.status === "RESOLVED" ? "resolved" : "open"
-              }`}
-            >
-              {incident.status}
-            </span>
-          </div>
+          <div className="timeline-content">
+            <div className="timeline-item-heading">
+              <strong>
+                Incident #{incident.id} — {incident.metric}
+              </strong>
 
-          <p>{incident.message}</p>
+              <span
+                className={`timeline-status ${
+                  incident.status === "RESOLVED" ? "resolved" : "open"
+                }`}
+              >
+                {incident.status}
+              </span>
+            </div>
 
-          <p className="timeline-time">
-            <strong>Detected:</strong>{" "}
-            {formatTimelineTime(incident.created_at)}
-          </p>
+            <p>{incident.message}</p>
 
-          {incident.resolved_at && (
             <p className="timeline-time">
-              <strong>Resolved:</strong>{" "}
-              {formatTimelineTime(incident.resolved_at)}
+              <strong>Detected:</strong>{" "}
+              {formatTimelineTime(incident.created_at)}
             </p>
-          )}
 
-          <p className="timeline-time">
-            <strong>Recorded value:</strong> {incident.value}%
-            {" · "}
-            <strong>Threshold:</strong> {incident.threshold}%
-          </p>
+            {incident.resolved_at && (
+              <p className="timeline-time">
+                <strong>Resolved:</strong>{" "}
+                {formatTimelineTime(incident.resolved_at)}
+              </p>
+            )}
+
+            <p className="timeline-time">
+              <strong>Recorded value:</strong> {incident.value}%
+              {" · "}
+              <strong>Threshold:</strong> {incident.threshold}%
+            </p>
+
+            <div className="timeline-events">
+              <h4>Recorded Events</h4>
+
+              {timelineLoading[incident.id] ? (
+                <p>Loading incident events…</p>
+              ) : timelineErrors[incident.id] ? (
+                <div>
+                  <p className="error">
+                    {timelineErrors[incident.id]}
+                  </p>
+                  <button
+                    onClick={() => fetchTimeline(incident.id)}
+                  >
+                    Retry timeline
+                  </button>
+                </div>
+              ) : !events ? (
+                <button
+                  onClick={() => fetchTimeline(incident.id)}
+                >
+                  Load timeline events
+                </button>
+              ) : events.length === 0 ? (
+                <p>No detailed events recorded for this incident.</p>
+              ) : (
+                <ol className="timeline-event-list">
+                  {events.map((event, index) => {
+                    const details = event.details || {};
+
+                    return (
+                      <li
+                        key={`${incident.id}-${event.event_type || "event"}-${index}`}
+                      >
+    
+<div className="timeline-event-heading">
+  <strong className="timeline-event-title">
+    {event.title || event.event_type || "Incident event"}
+  </strong>
+
+  <span className="timeline-event-timestamp">
+    {formatTimelineTime(event.timestamp)}
+  </span>
+</div>
+
+                        {details.message && <p>{details.message}</p>}
+
+                        {details.metric && (
+                          <p className="timeline-time">
+                            <strong>Metric:</strong> {details.metric}
+                          </p>
+                        )}
+
+                        {details.value !== undefined && (
+                          <p className="timeline-time">
+                            <strong>Value:</strong> {details.value}%
+                          </p>
+                        )}
+
+                        {details.threshold !== undefined && (
+                          <p className="timeline-time">
+                            <strong>Threshold:</strong>{" "}
+                            {details.threshold}%
+                          </p>
+                        )}
+
+                        {details.severity && (
+                          <p className="timeline-time">
+                            <strong>Severity:</strong>{" "}
+                            {details.severity}
+                          </p>
+                        )}
+
+                        {details.snapshot_id !== undefined && (
+                          <p className="timeline-time">
+                            <strong>Snapshot ID:</strong>{" "}
+                            {details.snapshot_id}
+                          </p>
+                        )}
+
+                        {details.capture_reason && (
+                          <p className="timeline-time">
+                            <strong>Capture reason:</strong>{" "}
+                            {details.capture_reason.replace(/_/g, " ")}
+                          </p>
+                        )}
+
+                        {details.collection_status && (
+                          <p className="timeline-time">
+                            <strong>Collection status:</strong>{" "}
+                            {details.collection_status}
+                          </p>
+                        )}
+
+                        {details.action && (
+                          <p className="timeline-time">
+                            <strong>Action:</strong> {details.action}
+                          </p>
+                        )}
+
+                        {details.mode && (
+                          <p className="timeline-time">
+                            <strong>Mode:</strong> {details.mode}
+                          </p>
+                        )}
+
+                        {details.executed !== undefined && (
+                          <p className="timeline-time">
+                            <strong>Executed:</strong>{" "}
+                            {details.executed ? "Yes" : "No"}
+                          </p>
+                        )}
+
+                        {details.result && (
+                          <p className="timeline-time">
+                            <strong>Result:</strong> {details.result}
+                          </p>
+                        )}
+
+                        {details.audit_id !== undefined && (
+                          <p className="timeline-time">
+                            <strong>Audit ID:</strong> {details.audit_id}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-    ));
+      );
+    });
   };
 
   const renderAuditRecords = (incidentId) => {
     const records = auditHistory[incidentId];
 
     if (!records) return null;
-
     if (records.length === 0) {
       return <p>No audit records for this incident.</p>;
     }
@@ -503,9 +706,7 @@ function App() {
     const evidence = evidenceHistory[incidentId];
 
     if (evidenceErrors[incidentId]) {
-      return (
-        <div className="error">{evidenceErrors[incidentId]}</div>
-      );
+      return <div className="error">{evidenceErrors[incidentId]}</div>;
     }
 
     if (!evidence) return null;
@@ -521,14 +722,11 @@ function App() {
         </div>
 
         <p>
-          <strong>Snapshots recorded:</strong>{" "}
-          {evidence.snapshot_count}
+          <strong>Snapshots recorded:</strong> {evidence.snapshot_count}
         </p>
-
         <p>
           <strong>Evidence scope:</strong> {evidence.evidence_scope}
         </p>
-
         <p>{evidence.message}</p>
 
         {evidence.snapshot_count === 0 ? (
@@ -540,25 +738,11 @@ function App() {
           evidence.snapshots.map((snapshot) => (
             <div className="audit-record" key={snapshot.id}>
               <h4>Snapshot #{snapshot.id}</h4>
-
-              <p>
-                <strong>Captured at:</strong> {snapshot.captured_at}
-              </p>
-              <p>
-                <strong>Capture reason:</strong>{" "}
-                {snapshot.capture_reason}
-              </p>
-              <p>
-                <strong>Collection status:</strong>{" "}
-                {snapshot.collection_status}
-              </p>
-              <p>
-                <strong>Incident metric value:</strong>{" "}
-                {snapshot.metric_value}%
-              </p>
-              <p>
-                <strong>Threshold:</strong> {snapshot.threshold}%
-              </p>
+              <p><strong>Captured at:</strong> {snapshot.captured_at}</p>
+              <p><strong>Capture reason:</strong> {snapshot.capture_reason}</p>
+              <p><strong>Collection status:</strong> {snapshot.collection_status}</p>
+              <p><strong>Incident metric value:</strong> {snapshot.metric_value}%</p>
+              <p><strong>Threshold:</strong> {snapshot.threshold}%</p>
 
               {snapshot.process_data?.message && (
                 <p>{snapshot.process_data.message}</p>
@@ -576,18 +760,14 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {snapshot.process_data.processes.map(
-                        (process) => (
-                          <tr
-                            key={`${snapshot.id}-${process.pid}`}
-                          >
-                            <td>{process.command}</td>
-                            <td>{process.pid}</td>
-                            <td>{process.cpu_percent}%</td>
-                            <td>{process.memory_percent}%</td>
-                          </tr>
-                        )
-                      )}
+                      {snapshot.process_data.processes.map((process) => (
+                        <tr key={`${snapshot.id}-${process.pid}`}>
+                          <td>{process.command}</td>
+                          <td>{process.pid}</td>
+                          <td>{process.cpu_percent}%</td>
+                          <td>{process.memory_percent}%</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -608,7 +788,8 @@ function App() {
       </div>
     );
   };
-    const metricCards = [
+
+  const metricCards = [
     {
       key: "CPUUtilization",
       title: "CPU Usage",
@@ -659,18 +840,13 @@ function App() {
           <div className="side-orb side-orb-a" />
           <div className="side-orb side-orb-b" />
           <div className="side-cloud">☁</div>
-          <div className="side-server">
-            <i /><i /><i />
-          </div>
+          <div className="side-server"><i /><i /><i /></div>
           <div className="side-glow" />
         </div>
 
         <div className="sidebar-caption">
           <h2>Cloud<br />Reliability<br />Platform</h2>
-          <p>
-            Monitor <b>·</b> Detect<br />
-            Diagnose <b>·</b> Remediate
-          </p>
+          <p>Monitor <b>·</b> Detect<br />Diagnose <b>·</b> Remediate</p>
         </div>
       </aside>
 
@@ -683,15 +859,14 @@ function App() {
               placeholder="Search incidents, metrics..."
               onChange={(event) => {
                 const query = event.target.value.toLowerCase();
-                document.querySelectorAll(".history-item").forEach(
-                  (item) => {
-                    item.style.display = item.textContent
-                      .toLowerCase()
-                      .includes(query)
-                      ? ""
-                      : "none";
-                  }
-                );
+
+                document.querySelectorAll(".history-item").forEach((item) => {
+                  item.style.display = item.textContent
+                    .toLowerCase()
+                    .includes(query)
+                    ? ""
+                    : "none";
+                });
               }}
             />
           </label>
@@ -716,9 +891,7 @@ function App() {
         </div>
 
         {error && <div className="error global-error">{error}</div>}
-        {actionError && (
-          <div className="error global-error">{actionError}</div>
-        )}
+        {actionError && <div className="error global-error">{actionError}</div>}
 
         <section className="hero-section">
           <div className="hero-copy">
@@ -730,17 +903,13 @@ function App() {
           <div className="hero-art" aria-hidden="true">
             <div className="hero-cloud">☁</div>
             <div className="hero-cloud-small">☁</div>
-            <div className="hero-server hero-server-a">
-              <i /><i /><i />
-            </div>
+            <div className="hero-server hero-server-a"><i /><i /><i /></div>
             <div className="hero-globe">
               <div className="globe-line globe-line-one" />
               <div className="globe-line globe-line-two" />
               <div className="globe-line globe-line-three" />
             </div>
-            <div className="hero-server hero-server-b">
-              <i /><i /><i />
-            </div>
+            <div className="hero-server hero-server-b"><i /><i /><i /></div>
             <span className="hero-star hero-star-a" />
             <span className="hero-star hero-star-b" />
             <span className="hero-star hero-star-c" />
@@ -756,7 +925,6 @@ function App() {
               <small>Latest sample within {METRIC_MAX_AGE_SECONDS}s</small>
             </div>
           </article>
-
           <article className="health-card health-amber">
             <div className="health-icon">◷</div>
             <div>
@@ -765,7 +933,6 @@ function App() {
               <small>Older than {METRIC_MAX_AGE_SECONDS}s</small>
             </div>
           </article>
-
           <article className="health-card health-purple">
             <div className="health-icon">☁</div>
             <div>
@@ -774,7 +941,6 @@ function App() {
               <small>No usable timestamp</small>
             </div>
           </article>
-
           <article className="health-card health-blue">
             <div className="health-icon">♢</div>
             <div>
@@ -796,19 +962,12 @@ function App() {
                 <div className="metric-icon">
                   {index === 0 ? "▦" : index === 1 ? "▣" : "▤"}
                 </div>
-
                 <div className="metric-name">
                   <h2>{metric.title}</h2>
                   <p>{metric.description}</p>
                 </div>
-
-                <span
-                  className={`freshness-badge ${
-                    metricFreshness(metric.key).className
-                  }`}
-                >
-                  <i />
-                  {metricFreshness(metric.key).label}
+                <span className={`freshness-badge ${metricFreshness(metric.key).className}`}>
+                  <i />{metricFreshness(metric.key).label}
                 </span>
               </div>
 
@@ -829,8 +988,7 @@ function App() {
 
               <p className="metric-samples">
                 {(metrics?.[metric.key] || []).slice(-30).length} samples
-                <span> · </span>
-                {metric.key}
+                <span> · </span>{metric.key}
               </p>
             </article>
           ))}
@@ -851,9 +1009,7 @@ function App() {
                 <span className="clear-check">✓</span>
                 <div>
                   <h3>No active incidents detected</h3>
-                  <p>
-                    All monitored metrics are within normal thresholds.
-                  </p>
+                  <p>All monitored metrics are within normal thresholds.</p>
                 </div>
                 <div className="clear-shield">♢</div>
               </div>
@@ -861,9 +1017,7 @@ function App() {
               incidents.map((incident) => (
                 <div className="incident-card" key={incident.id}>
                   <div>
-                    <strong>
-                      #{incident.id} — {incident.metric}
-                    </strong>
+                    <strong>#{incident.id} — {incident.metric}</strong>
                     <p>{incident.message}</p>
                     <small>
                       Value: {incident.value}% · Severity: {incident.severity}
@@ -874,27 +1028,16 @@ function App() {
                     onClick={() => requestRemediation(incident.id)}
                     disabled={Boolean(loading[incident.id])}
                   >
-                    {loading[incident.id]
-                      ? "Generating…"
-                      : "Recommend Remediation"}
+                    {loading[incident.id] ? "Generating…" : "Recommend Remediation"}
                   </button>
 
                   {recommendations[incident.id] && (
                     <div className="remediation-result">
                       <h3>Recommendation</h3>
-                      <p>
-                        <strong>Action:</strong>{" "}
-                        {recommendations[incident.id].action}
-                      </p>
-                      <p>
-                        <strong>Mode:</strong>{" "}
-                        {recommendations[incident.id].mode}
-                      </p>
+                      <p><strong>Action:</strong> {recommendations[incident.id].action}</p>
+                      <p><strong>Mode:</strong> {recommendations[incident.id].mode}</p>
                       <p>{recommendations[incident.id].message}</p>
-                      <p>
-                        <strong>Executed:</strong>{" "}
-                        {String(recommendations[incident.id].executed)}
-                      </p>
+                      <p><strong>Executed:</strong> {String(recommendations[incident.id].executed)}</p>
                     </div>
                   )}
 
@@ -925,30 +1068,18 @@ function App() {
               history.map((incident) => (
                 <div className="history-item" key={incident.id}>
                   <div className="history-row">
-                    <span
-                      className={`history-check ${
-                        incident.status === "RESOLVED" ? "resolved" : "open"
-                      }`}
-                    >
+                    <span className={`history-check ${incident.status === "RESOLVED" ? "resolved" : "open"}`}>
                       {incident.status === "RESOLVED" ? "✓" : "!"}
                     </span>
-
                     <div className="history-copy">
-                      <strong>
-                        #{incident.id} — {incident.metric}
-                      </strong>
+                      <strong>#{incident.id} — {incident.metric}</strong>
                       <p>{incident.message}</p>
                       <small>
                         Value: <b>{incident.value}%</b>
                         <span>Severity: {incident.severity}</span>
                       </small>
                     </div>
-
-                    <span
-                      className={`resolved-badge ${
-                        incident.status === "RESOLVED" ? "" : "open"
-                      }`}
-                    >
+                    <span className={`resolved-badge ${incident.status === "RESOLVED" ? "" : "open"}`}>
                       {incident.status}
                     </span>
                   </div>
@@ -961,9 +1092,7 @@ function App() {
                       onClick={() => fetchEvidence(incident.id)}
                       disabled={Boolean(evidenceLoading[incident.id])}
                     >
-                      {evidenceLoading[incident.id]
-                        ? "Loading…"
-                        : "View Process Evidence"}
+                      {evidenceLoading[incident.id] ? "Loading…" : "View Process Evidence"}
                     </button>
                   </div>
 
@@ -974,8 +1103,7 @@ function App() {
                     </details>
                   )}
 
-                  {(evidenceHistory[incident.id] ||
-                    evidenceErrors[incident.id]) && (
+                  {(evidenceHistory[incident.id] || evidenceErrors[incident.id]) && (
                     <details className="detail-panel" open>
                       <summary>Historical Process Evidence</summary>
                       {renderProcessEvidence(incident.id)}
@@ -993,32 +1121,31 @@ function App() {
             <div>
               <h2>Incident Timeline</h2>
               <p>
-                Recorded detection and recovery events from incident history.
+                Recorded detection, diagnosis, remediation audit, and
+                recovery events from incident history.
               </p>
             </div>
             <div className="timeline-art" aria-hidden="true">
-              <div className="timeline-server">
-                <i /><i /><i />
-              </div>
+              <div className="timeline-server"><i /><i /><i /></div>
               <span>♢</span>
-              <div className="timeline-server">
-                <i /><i /><i />
-              </div>
+              <div className="timeline-server"><i /><i /><i /></div>
             </div>
           </div>
+
           <div className="timeline-list">{renderIncidentTimeline()}</div>
         </section>
 
         <footer className="platform-footer" id="platform-info">
           <h2>Nexora Monitoring</h2>
           <p>
-            Nexora monitors cloud infrastructure metrics and detects potential
-            reliability issues.
+            Nexora monitors cloud infrastructure metrics and detects
+            potential reliability issues.
           </p>
           <p>
-            The dashboard refreshes its data every 10 seconds. Metric freshness
-            indicates whether the latest available sample is recent; it does
-            not guarantee that the infrastructure is completely healthy.
+            The dashboard refreshes its data every 10 seconds. Metric
+            freshness indicates whether the latest available sample is
+            recent; it does not guarantee that the infrastructure is
+            completely healthy.
           </p>
           <p>
             Process snapshots provide diagnostic evidence. They do not
@@ -1026,7 +1153,8 @@ function App() {
           </p>
           <p>
             Recommendations are recorded in an audit trail. Remediation
-            remains in dry-run mode and does not execute infrastructure changes.
+            remains in dry-run mode and does not execute infrastructure
+            changes.
           </p>
         </footer>
       </main>
