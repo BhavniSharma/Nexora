@@ -1,181 +1,262 @@
-
 import { useEffect, useState } from "react";
 import "./App.css";
 
 const API_URL = "http://98.91.2.103:8000";
 const METRIC_MAX_AGE_SECONDS = 180;
 
-function MetricTrendChart({
-  title,
-  metric,
-  points,
-  color,
-  threshold = 80,
-}) {
-  const width = 640;
-  const height = 190;
-  const padding = { top: 16, right: 18, bottom: 30, left: 42 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
+/* ---------- Small helpers ---------- */
 
-  const samples = (points || []).slice(-30);
-  const validSamples = samples.filter((point) =>
-    Number.isFinite(Number(point.value))
+const ICONS = {
+  home: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
+  bell: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0",
+  box: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12",
+  cpu: "M5 5h14v14H5z M9 9h6v6H9z M9 1v4 M15 1v4 M9 19v4 M15 19v4 M19 9h4 M19 15h4 M1 9h4 M1 15h4",
+  shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4",
+  search: "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z M21 21l-4.35-4.35",
+  bulb: "M9 18h6 M10 22h4 M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z",
+  calendar: "M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18",
+  down: "M6 9l6 6 6-6",
+  right: "M9 18l6-6-6-6",
+  arrow: "M5 12h14 M13 6l6 6-6 6",
+  upright: "M7 17L17 7 M7 7h10v10",
+  clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6v6l4 2",
+  file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8",
+  cloud: "M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z",
+  activity: "M22 12h-4l-3 9L9 3l-3 9H2",
+  disk: "M12 3c4.97 0 9 1.34 9 3s-4.03 3-9 3-9-1.34-9-3 4.03-3 9-3z M3 6v6c0 1.66 4.03 3 9 3s9-1.34 9-3V6 M3 12v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6",
+};
+
+function Icon({ name, size = 22 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={ICONS[name]} />
+    </svg>
   );
+}
 
-  if (validSamples.length === 0) {
-    return (
-      <div className="trend-card">
-        <div className="trend-card-heading">
-          <h3>{title}</h3>
-          <span className="trend-subtitle">No samples available</span>
-        </div>
-        <div className="trend-empty">
-          Waiting for CloudWatch samples…
-        </div>
-      </div>
-    );
+const toSeries = (points) =>
+  (points || [])
+    .slice(-30)
+    .map((point, index) => {
+      const time = point.timestamp ? new Date(point.timestamp).getTime() : NaN;
+      return {
+        t: Number.isNaN(time) ? index : time,
+        v: Number(point.value),
+      };
+    })
+    .filter((point) => Number.isFinite(point.v));
+
+const timeAgo = (timestamp) => {
+  if (!timestamp) return "—";
+  const time = new Date(timestamp).getTime();
+  if (Number.isNaN(time)) return "—";
+  const seconds = Math.max(0, Math.floor((Date.now() - time) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+};
+
+const priorityOf = (severity = "") => {
+  if (/crit|high/i.test(severity)) return { label: "High", tone: "red" };
+  if (/med|warn/i.test(severity)) return { label: "Medium", tone: "amber" };
+  return { label: "Low", tone: "grey" };
+};
+
+/* ---------- Main utilization chart (with hover tooltip) ---------- */
+
+function UtilizationChart({ series }) {
+  const [hoverT, setHoverT] = useState(null);
+
+  const width = 1000;
+  const height = 200;
+  const pad = { top: 14, right: 30, bottom: 36, left: 48 };
+  const cw = width - pad.left - pad.right;
+  const ch = height - pad.top - pad.bottom;
+
+  const all = series.flatMap((s) => s.data);
+
+  if (all.length === 0) {
+    return <div className="trend-empty">Waiting for CloudWatch samples…</div>;
   }
 
-  const x = (index) =>
-    padding.left +
-    (validSamples.length === 1
-      ? chartWidth / 2
-      : (index / (validSamples.length - 1)) * chartWidth);
+  const tMin = Math.min(...all.map((p) => p.t));
+  let tMax = Math.max(...all.map((p) => p.t));
+  if (tMax === tMin) tMax = tMin + 1;
+  const isTime = tMin > 1e11;
 
-  const y = (value) =>
-    padding.top +
-    ((100 - Math.max(0, Math.min(100, value))) / 100) *
-      chartHeight;
+  const x = (t) => pad.left + ((t - tMin) / (tMax - tMin)) * cw;
+  const y = (v) =>
+    pad.top + ((100 - Math.max(0, Math.min(100, v))) / 100) * ch;
 
-  // Fixed chart path expression.
-  const pathData = validSamples
-    .map((point, index) => {
-      const value = Number(point.value);
-      return `${index === 0 ? "M" : "L"} ${x(index)} ${y(value)}`;
-    })
-    .join(" ");
+  const fmt = (t) =>
+    isTime
+      ? new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : `#${Math.round(t) + 1}`;
 
-  const latest = validSamples[validSamples.length - 1];
+  const ticks = Array.from({ length: 6 }, (_, i) => tMin + ((tMax - tMin) * i) / 5);
+
+  const nearest = (data, t) =>
+    data.reduce(
+      (best, p) => (best === null || Math.abs(p.t - t) < Math.abs(best.t - t) ? p : best),
+      null
+    );
+
+  const onMove = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const vx = ((event.clientX - rect.left) / rect.width) * width;
+    const clamped = Math.max(pad.left, Math.min(pad.left + cw, vx));
+    setHoverT(tMin + ((clamped - pad.left) / cw) * (tMax - tMin));
+  };
+
+  const base = series.find((s) => s.data.length > 0);
+  const anchor = hoverT !== null && base ? nearest(base.data, hoverT) : null;
+  const hovered = anchor
+    ? series
+        .map((s) => ({ ...s, point: nearest(s.data, anchor.t) }))
+        .filter((s) => s.point)
+    : [];
+  const leftPct = anchor ? (x(anchor.t) / width) * 100 : 0;
 
   return (
-    <div className="trend-card">
-      <div className="trend-card-heading">
-        <div>
-          <h3>{title}</h3>
-          <p className="trend-subtitle">
-            {validSamples.length} samples · {metric}
-          </p>
-        </div>
-        <div className="trend-current">
-          <strong>{latest.value}%</strong>
-          <span>Latest</span>
-        </div>
-      </div>
-
-      <div className="trend-chart-wrap">
-        <svg
-          className="trend-chart"
-          viewBox={`0 0 ${width} ${height}`}
-          role="img"
-          aria-label={`${title} trend chart`}
-        >
-          {[0, 25, 50, 75, 100].map((tick) => (
-            <g key={tick}>
-              <line
-                x1={padding.left}
-                y1={y(tick)}
-                x2={width - padding.right}
-                y2={y(tick)}
-                className="trend-grid-line"
-              />
-              <text
-                x={padding.left - 9}
-                y={y(tick) + 4}
-                textAnchor="end"
-                className="trend-axis-label"
-              >
-                {tick}%
-              </text>
-            </g>
-          ))}
-
-          <line
-            x1={padding.left}
-            y1={y(threshold)}
-            x2={width - padding.right}
-            y2={y(threshold)}
-            className="trend-threshold-line"
-          />
-
-          <path
-            d={pathData}
-            fill="none"
-            stroke={color}
-            strokeWidth="3"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-
-          {validSamples.map((point, index) => (
-            <circle
-              key={`${point.timestamp || index}-${index}`}
-              cx={x(index)}
-              cy={y(Number(point.value))}
-              r={index === validSamples.length - 1 ? 4.5 : 2.2}
-              fill={color}
+    <div className="big-chart-wrap">
+      <svg
+        className="big-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Resource utilization chart"
+        onMouseMove={onMove}
+        onMouseLeave={() => setHoverT(null)}
+      >
+        {[0, 25, 50, 75, 100].map((tick) => (
+          <g key={tick}>
+            <line
+              x1={pad.left}
+              y1={y(tick)}
+              x2={width - pad.right}
+              y2={y(tick)}
+              className="trend-grid-line"
+            />
+            <text
+              x={pad.left - 12}
+              y={y(tick) + 4}
+              textAnchor="end"
+              className="trend-axis-label"
             >
-              <title>
-                {`${point.value}%${
-                  point.timestamp
-                    ? ` — ${new Date(
-                        point.timestamp
-                      ).toLocaleString()}`
-                    : ""
-                }`}
-              </title>
-            </circle>
+              {tick}%
+            </text>
+          </g>
+        ))}
+
+        {ticks.map((t, i) => (
+          <g key={i}>
+            <line
+              x1={x(t)}
+              y1={pad.top}
+              x2={x(t)}
+              y2={pad.top + ch}
+              className="trend-grid-line vertical"
+            />
+            <text
+              x={x(t)}
+              y={height - 10}
+              textAnchor="middle"
+              className="trend-axis-label"
+            >
+              {fmt(t)}
+            </text>
+          </g>
+        ))}
+
+        {series.map((s) =>
+          s.data.length > 0 ? (
+            <path
+              key={s.key}
+              d={s.data
+                .map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.t)} ${y(p.v)}`)
+                .join(" ")}
+              fill="none"
+              stroke={s.color}
+              strokeWidth="2.4"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ) : null
+        )}
+
+        {anchor && (
+          <g>
+            <line
+              x1={x(anchor.t)}
+              y1={pad.top}
+              x2={x(anchor.t)}
+              y2={pad.top + ch}
+              stroke="#ffffff"
+              strokeOpacity="0.7"
+              strokeDasharray="3 4"
+            />
+            {hovered.map((s) => (
+              <g key={s.key}>
+                <circle cx={x(s.point.t)} cy={y(s.point.v)} r="8" fill={s.color} fillOpacity="0.25" />
+                <circle cx={x(s.point.t)} cy={y(s.point.v)} r="4" fill="#0b0b14" stroke={s.color} strokeWidth="2" />
+              </g>
+            ))}
+          </g>
+        )}
+      </svg>
+
+      {anchor && (
+        <div
+          className="chart-tooltip"
+          style={
+            leftPct > 60
+              ? { left: `calc(${leftPct}% - 220px)` }
+              : { left: `calc(${leftPct}% + 14px)` }
+          }
+        >
+          <div className="chart-tooltip-time">{fmt(anchor.t)}</div>
+          {hovered.map((s) => (
+            <div className="chart-tooltip-row" key={s.key}>
+              <i style={{ background: s.color }} />
+              <span>{s.label}</span>
+              <b>{Math.round(s.point.v)}%</b>
+            </div>
           ))}
+        </div>
+      )}
 
-          <text
-            x={padding.left}
-            y={height - 7}
-            className="trend-axis-label"
-          >
-            {validSamples[0].timestamp
-              ? new Date(
-                  validSamples[0].timestamp
-                ).toLocaleTimeString()
-              : "Oldest"}
-          </text>
-
-          <text
-            x={width - padding.right}
-            y={height - 7}
-            textAnchor="end"
-            className="trend-axis-label"
-          >
-            {latest.timestamp
-              ? new Date(latest.timestamp).toLocaleTimeString()
-              : "Latest"}
-          </text>
-        </svg>
+      <div className="chart-legend">
+        {series.map((s) => (
+          <span key={s.key}>
+            <i style={{ background: s.color }} />
+            {s.label}
+          </span>
+        ))}
       </div>
-
-      <p className="trend-footnote">
-        Dashed line: {threshold}% alert threshold. Data comes from
-        CloudWatch samples returned by the backend.
-      </p>
     </div>
   );
 }
+
+/* ---------- App ---------- */
 
 function App() {
   const [metrics, setMetrics] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [history, setHistory] = useState([]);
 
-  // Detailed incident timeline state.
   const [timelineHistory, setTimelineHistory] = useState({});
   const [timelineLoading, setTimelineLoading] = useState({});
   const [timelineErrors, setTimelineErrors] = useState({});
@@ -189,6 +270,14 @@ function App() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [lastSuccessfulFetch, setLastSuccessfulFetch] = useState(null);
+
+  const [chartMetric, setChartMetric] = useState("ALL");
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -223,51 +312,30 @@ function App() {
     }
   };
 
-  // Fetch the timeline for one incident.
   const fetchTimeline = async (incidentId) => {
-    setTimelineLoading((previous) => ({
-      ...previous,
-      [incidentId]: true,
-    }));
-
-    setTimelineErrors((previous) => ({
-      ...previous,
-      [incidentId]: "",
-    }));
+    setTimelineLoading((previous) => ({ ...previous, [incidentId]: true }));
+    setTimelineErrors((previous) => ({ ...previous, [incidentId]: "" }));
 
     try {
-      const response = await fetch(
-        `${API_URL}/incidents/${incidentId}/timeline`
-      );
-
+      const response = await fetch(`${API_URL}/incidents/${incidentId}/timeline`);
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.detail || "Unable to load incident timeline"
-        );
+        throw new Error(data.detail || "Unable to load incident timeline");
       }
 
-      // The API returns "timeline", not just "events".
       const events = Array.isArray(data)
         ? data
         : data.timeline || data.events || [];
 
-      setTimelineHistory((previous) => ({
-        ...previous,
-        [incidentId]: events,
-      }));
+      setTimelineHistory((previous) => ({ ...previous, [incidentId]: events }));
     } catch (err) {
       setTimelineErrors((previous) => ({
         ...previous,
-        [incidentId]:
-          err.message || "Could not load incident timeline.",
+        [incidentId]: err.message || "Could not load incident timeline.",
       }));
     } finally {
-      setTimelineLoading((previous) => ({
-        ...previous,
-        [incidentId]: false,
-      }));
+      setTimelineLoading((previous) => ({ ...previous, [incidentId]: false }));
     }
   };
 
@@ -290,60 +358,37 @@ function App() {
 
       setActionError("");
     } catch {
-      setActionError(
-        `Could not load audit history for incident #${incidentId}.`
-      );
+      setActionError(`Could not load audit history for incident #${incidentId}.`);
     }
   };
 
   const fetchEvidence = async (incidentId) => {
-    setEvidenceLoading((previous) => ({
-      ...previous,
-      [incidentId]: true,
-    }));
-
-    setEvidenceErrors((previous) => ({
-      ...previous,
-      [incidentId]: "",
-    }));
+    setEvidenceLoading((previous) => ({ ...previous, [incidentId]: true }));
+    setEvidenceErrors((previous) => ({ ...previous, [incidentId]: "" }));
 
     try {
       const response = await fetch(
         `${API_URL}/incidents/${incidentId}/diagnosis/evidence`
       );
-
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.detail || "Unable to load process evidence"
-        );
+        throw new Error(data.detail || "Unable to load process evidence");
       }
 
-      setEvidenceHistory((previous) => ({
-        ...previous,
-        [incidentId]: data,
-      }));
+      setEvidenceHistory((previous) => ({ ...previous, [incidentId]: data }));
     } catch (err) {
       setEvidenceErrors((previous) => ({
         ...previous,
-        [incidentId]:
-          err.message || "Could not load process evidence.",
+        [incidentId]: err.message || "Could not load process evidence.",
       }));
     } finally {
-      setEvidenceLoading((previous) => ({
-        ...previous,
-        [incidentId]: false,
-      }));
+      setEvidenceLoading((previous) => ({ ...previous, [incidentId]: false }));
     }
   };
 
   const requestRemediation = async (incidentId) => {
-    setLoading((previous) => ({
-      ...previous,
-      [incidentId]: true,
-    }));
-
+    setLoading((previous) => ({ ...previous, [incidentId]: true }));
     setActionError("");
 
     try {
@@ -355,9 +400,7 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.detail || "Recommendation request failed"
-        );
+        throw new Error(data.detail || "Recommendation request failed");
       }
 
       setRecommendations((previous) => ({
@@ -368,14 +411,9 @@ function App() {
       await fetchAudit(incidentId);
       await fetchTimeline(incidentId);
     } catch (err) {
-      setActionError(
-        err.message || "Unable to create recommendation."
-      );
+      setActionError(err.message || "Unable to create recommendation.");
     } finally {
-      setLoading((previous) => ({
-        ...previous,
-        [incidentId]: false,
-      }));
+      setLoading((previous) => ({ ...previous, [incidentId]: false }));
     }
   };
 
@@ -386,7 +424,6 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Automatically load timelines for incidents in history.
   useEffect(() => {
     history.forEach((incident) => {
       const incidentId = incident.id;
@@ -454,10 +491,7 @@ function App() {
     (item) => item.className === "no-data"
   ).length;
 
-  const hasMetricData = healthSummary.some(
-    (item) => item.className === "live"
-  );
-
+  const hasMetricData = healthSummary.some((item) => item.className === "live");
   const allMetricsFresh = freshMetricCount === healthSummary.length;
   const hasActiveIncidents = incidents.length > 0;
 
@@ -492,7 +526,83 @@ function App() {
     return date.toLocaleString();
   };
 
-  // Render incident summaries and detailed timeline events.
+  const metricCards = [
+    {
+      key: "CPUUtilization",
+      title: "CPU Usage",
+      label: "CPU Utilization",
+      description: "EC2 Instance",
+      icon: "cpu",
+      color: "#b4a9d6",
+    },
+    {
+      key: "MemoryUtilization",
+      title: "Memory Usage",
+      label: "Memory Utilization",
+      description: "EC2 Instance",
+      icon: "box",
+      color: "#d9dce4",
+    },
+    {
+      key: "DiskUtilization",
+      title: "Disk Usage",
+      label: "Disk Utilization",
+      description: "Root Volume",
+      icon: "disk",
+      color: "#7c808e",
+    },
+  ];
+
+  const chartSeries = metricCards
+    .filter((m) => chartMetric === "ALL" || m.key === chartMetric)
+    .map((m) => ({
+      key: m.key,
+      label: m.label,
+      color: m.color,
+      data: toSeries(metrics?.[m.key]),
+    }));
+
+  const chartTitle =
+    chartMetric === "ALL"
+      ? "Resource Utilization"
+      : metricCards.find((m) => m.key === chartMetric)?.label;
+
+  /* ---- Summary cards: numbers only, no graph ---- */
+  const statCards = [
+    {
+      id: "fresh",
+      icon: "activity",
+      label: "Fresh Metrics",
+      value: `${freshMetricCount} / ${healthSummary.length}`,
+      foot: "Latest sample within 180s",
+    },
+    {
+      id: "stale",
+      icon: "clock",
+      label: "Stale Metrics",
+      value: staleMetricCount,
+      foot: "Older than 180s",
+    },
+    {
+      id: "nodata",
+      icon: "cloud",
+      label: "Metrics Without Data",
+      value: noDataMetricCount,
+      foot: "No usable timestamp",
+    },
+    {
+      id: "incidents",
+      icon: "bell",
+      label: "Active Incidents",
+      value: incidents.length,
+      foot: "Currently reported as open",
+    },
+  ];
+
+  const pillTone = { live: "green", stale: "amber", "no-data": "purple" };
+
+  /* ---------- Existing detail renderers (unchanged) ---------- */
+
   const renderIncidentTimeline = () => {
     if (history.length === 0) {
       return <p>No timeline events available yet.</p>;
@@ -527,20 +637,17 @@ function App() {
             <p>{incident.message}</p>
 
             <p className="timeline-time">
-              <strong>Detected:</strong>{" "}
-              {formatTimelineTime(incident.created_at)}
+              <strong>Detected:</strong> {formatTimelineTime(incident.created_at)}
             </p>
 
             {incident.resolved_at && (
               <p className="timeline-time">
-                <strong>Resolved:</strong>{" "}
-                {formatTimelineTime(incident.resolved_at)}
+                <strong>Resolved:</strong> {formatTimelineTime(incident.resolved_at)}
               </p>
             )}
 
             <p className="timeline-time">
-              <strong>Recorded value:</strong> {incident.value}%
-              {" · "}
+              <strong>Recorded value:</strong> {incident.value}%{" · "}
               <strong>Threshold:</strong> {incident.threshold}%
             </p>
 
@@ -551,19 +658,13 @@ function App() {
                 <p>Loading incident events…</p>
               ) : timelineErrors[incident.id] ? (
                 <div>
-                  <p className="error">
-                    {timelineErrors[incident.id]}
-                  </p>
-                  <button
-                    onClick={() => fetchTimeline(incident.id)}
-                  >
+                  <p className="error">{timelineErrors[incident.id]}</p>
+                  <button onClick={() => fetchTimeline(incident.id)}>
                     Retry timeline
                   </button>
                 </div>
               ) : !events ? (
-                <button
-                  onClick={() => fetchTimeline(incident.id)}
-                >
+                <button onClick={() => fetchTimeline(incident.id)}>
                   Load timeline events
                 </button>
               ) : events.length === 0 ? (
@@ -577,16 +678,15 @@ function App() {
                       <li
                         key={`${incident.id}-${event.event_type || "event"}-${index}`}
                       >
-    
-<div className="timeline-event-heading">
-  <strong className="timeline-event-title">
-    {event.title || event.event_type || "Incident event"}
-  </strong>
+                        <div className="timeline-event-heading">
+                          <strong className="timeline-event-title">
+                            {event.title || event.event_type || "Incident event"}
+                          </strong>
 
-  <span className="timeline-event-timestamp">
-    {formatTimelineTime(event.timestamp)}
-  </span>
-</div>
+                          <span className="timeline-event-timestamp">
+                            {formatTimelineTime(event.timestamp)}
+                          </span>
+                        </div>
 
                         {details.message && <p>{details.message}</p>}
 
@@ -604,22 +704,19 @@ function App() {
 
                         {details.threshold !== undefined && (
                           <p className="timeline-time">
-                            <strong>Threshold:</strong>{" "}
-                            {details.threshold}%
+                            <strong>Threshold:</strong> {details.threshold}%
                           </p>
                         )}
 
                         {details.severity && (
                           <p className="timeline-time">
-                            <strong>Severity:</strong>{" "}
-                            {details.severity}
+                            <strong>Severity:</strong> {details.severity}
                           </p>
                         )}
 
                         {details.snapshot_id !== undefined && (
                           <p className="timeline-time">
-                            <strong>Snapshot ID:</strong>{" "}
-                            {details.snapshot_id}
+                            <strong>Snapshot ID:</strong> {details.snapshot_id}
                           </p>
                         )}
 
@@ -693,8 +790,7 @@ function App() {
         <p><strong>Result:</strong> {record.result}</p>
         <p><strong>Mode:</strong> {record.mode}</p>
         <p>
-          <strong>Executed:</strong>{" "}
-          {Boolean(record.executed) ? "Yes" : "No"}
+          <strong>Executed:</strong> {Boolean(record.executed) ? "Yes" : "No"}
         </p>
         <p><strong>Time:</strong> {record.created_at}</p>
         {record.message && <p>{record.message}</p>}
@@ -721,12 +817,8 @@ function App() {
           <span>{evidence.incident_status}</span>
         </div>
 
-        <p>
-          <strong>Snapshots recorded:</strong> {evidence.snapshot_count}
-        </p>
-        <p>
-          <strong>Evidence scope:</strong> {evidence.evidence_scope}
-        </p>
+        <p><strong>Snapshots recorded:</strong> {evidence.snapshot_count}</p>
+        <p><strong>Evidence scope:</strong> {evidence.evidence_scope}</p>
         <p>{evidence.message}</p>
 
         {evidence.snapshot_count === 0 ? (
@@ -789,74 +881,75 @@ function App() {
     );
   };
 
-  const metricCards = [
-    {
-      key: "CPUUtilization",
-      title: "CPU Usage",
-      description: "EC2 Instance",
-      color: "#60a5fa",
-    },
-    {
-      key: "MemoryUtilization",
-      title: "Memory Usage",
-      description: "EC2 Instance",
-      color: "#a879ff",
-    },
-    {
-      key: "DiskUtilization",
-      title: "Disk Usage",
-      description: "Root Volume",
-      color: "#18e5e5",
-    },
-  ];
+  const dateLabel = `${now.toLocaleDateString("en-US", { weekday: "short" })}, ${now.getDate()} ${now.toLocaleDateString("en-US", { month: "short" })} ${now.getFullYear()}`;
+  const timeLabel = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const recentIncidents = history.slice(0, 3);
 
   return (
     <div className="nexora-app" id="top">
+      {/* ================= Sidebar ================= */}
       <aside className="sidebar">
         <a className="sidebar-brand" href="#top">
-          <span className="brand-cloud">☁</span>
-          <span>NEXORA</span>
+          <span className="brand-logo">N</span>
+          <span className="brand-text">
+            <strong>NEXORA</strong>
+            <small>CLOUD INCIDENT INTELLIGENCE</small>
+          </span>
         </a>
 
         <nav className="sidebar-nav" aria-label="Main navigation">
           <a className="sidebar-link active" href="#top">
-            <span className="nav-icon">▦</span>Dashboard
+            <span className="nav-icon"><Icon name="home" /></span>
+            <span>Dashboard</span>
           </a>
           <a className="sidebar-link" href="#active-incidents">
-            <span className="nav-icon">♧</span>Incidents
+            <span className="nav-icon"><Icon name="bell" /></span>
+            <span>Incidents</span>
+            {incidents.length > 0 && (
+              <span className="nav-badge">{incidents.length}</span>
+            )}
           </a>
           <a className="sidebar-link" href="#incident-history">
-            <span className="nav-icon">◷</span>History
+            <span className="nav-icon"><Icon name="clock" /></span>
+            <span>History</span>
           </a>
           <a className="sidebar-link" href="#timeline">
-            <span className="nav-icon">⌘</span>Timeline
+            <span className="nav-icon"><Icon name="activity" /></span>
+            <span>Timeline</span>
           </a>
           <a className="sidebar-link" href="#platform-info">
-            <span className="nav-icon">▤</span>Reports
+            <span className="nav-icon"><Icon name="file" /></span>
+            <span>Reports</span>
           </a>
         </nav>
 
-        <div className="sidebar-art" aria-hidden="true">
-          <div className="side-orb side-orb-a" />
-          <div className="side-orb side-orb-b" />
-          <div className="side-cloud">☁</div>
-          <div className="side-server"><i /><i /><i /></div>
-          <div className="side-glow" />
-        </div>
+        <div className="side-bottom">
+          <div className="conn-box">
+            <Icon name="cloud" size={20} />
+            <span>{error ? "Disconnected" : "Connected to AWS"}</span>
+            <i className={`conn-dot ${error ? "down" : ""}`} />
+          </div>
 
-        <div className="sidebar-caption">
-          <h2>Cloud<br />Reliability<br />Platform</h2>
-          <p>Monitor <b>·</b> Detect<br />Diagnose <b>·</b> Remediate</p>
+          <div className="side-user">
+            <span className="avatar-circle">BS</span>
+            <strong>Bhavni Sharma</strong>
+            <span className="side-user-arrow"><Icon name="right" size={18} /></span>
+          </div>
         </div>
       </aside>
 
+      {/* ================= Main ================= */}
       <main className="main-content">
         <div className="topbar">
           <label className="search-box">
-            <span>⌕</span>
+            <span><Icon name="search" size={20} /></span>
             <input
               aria-label="Search incidents and metrics"
-              placeholder="Search incidents, metrics..."
+              placeholder="Search instances, incidents, metrics..."
               onChange={(event) => {
                 const query = event.target.value.toLowerCase();
 
@@ -871,133 +964,208 @@ function App() {
             />
           </label>
 
-          <div className={`top-status ${systemStatusClass}`}>
-            <i /> {systemStatus}
-          </div>
-
           <div className="topbar-right">
-            <span className="refresh-symbol">⟳</span>
-            <div className="updated-label">
-              <small>Last updated</small>
-              <strong>
-                {lastSuccessfulFetch
-                  ? lastSuccessfulFetch.toLocaleTimeString()
-                  : "--:--:--"}
-              </strong>
+            <div className={`top-status ${systemStatusClass}`}>
+              <i /> {systemStatus}
             </div>
-            <span className="topbar-bell">♧</span>
-            <span className="topbar-avatar">●</span>
+            <a className="topbar-bell" href="#active-incidents" aria-label="Incidents">
+              <Icon name="bell" size={24} />
+              {incidents.length > 0 && <i className="bell-dot" />}
+            </a>
+            <span className="topbar-avatar">BS</span>
           </div>
         </div>
 
         {error && <div className="error global-error">{error}</div>}
         {actionError && <div className="error global-error">{actionError}</div>}
 
-        <section className="hero-section">
-          <div className="hero-copy">
-            <span>Welcome to</span>
-            <h1>NEXORA</h1>
-            <p>Cloud Reliability &amp; Monitoring Platform</p>
+        <section className="welcome-row">
+          <div>
+            <h1>
+              Welcome back, <span>Bhavni</span>
+            </h1>
+            <p>Here&apos;s what&apos;s happening with your AWS infrastructure.</p>
           </div>
 
-          <div className="hero-art" aria-hidden="true">
-            <div className="hero-cloud">☁</div>
-            <div className="hero-cloud-small">☁</div>
-            <div className="hero-server hero-server-a"><i /><i /><i /></div>
-            <div className="hero-globe">
-              <div className="globe-line globe-line-one" />
-              <div className="globe-line globe-line-two" />
-              <div className="globe-line globe-line-three" />
+          <div className="welcome-meta">
+            <div className="welcome-date">
+              <div>{dateLabel}</div>
+              <strong>{timeLabel}</strong>
             </div>
-            <div className="hero-server hero-server-b"><i /><i /><i /></div>
-            <span className="hero-star hero-star-a" />
-            <span className="hero-star hero-star-b" />
-            <span className="hero-star hero-star-c" />
+            <div className="range-pill" title="Dashboard refreshes automatically">
+              <Icon name="calendar" size={20} />
+              <span>
+                {lastSuccessfulFetch
+                  ? `Updated ${lastSuccessfulFetch.toLocaleTimeString()}`
+                  : "Waiting for data"}
+              </span>
+              <Icon name="down" size={18} />
+            </div>
           </div>
         </section>
 
-        <section className="health-grid" id="overview">
-          <article className="health-card health-green">
-            <div className="health-icon">▤</div>
-            <div>
-              <strong>{freshMetricCount} / {healthSummary.length}</strong>
-              <span>Fresh Metrics</span>
-              <small>Latest sample within {METRIC_MAX_AGE_SECONDS}s</small>
-            </div>
-          </article>
-          <article className="health-card health-amber">
-            <div className="health-icon">◷</div>
-            <div>
-              <strong>{staleMetricCount}</strong>
-              <span>Stale Metrics</span>
-              <small>Older than {METRIC_MAX_AGE_SECONDS}s</small>
-            </div>
-          </article>
-          <article className="health-card health-purple">
-            <div className="health-icon">☁</div>
-            <div>
-              <strong>{noDataMetricCount}</strong>
-              <span>Metrics Without Data</span>
-              <small>No usable timestamp</small>
-            </div>
-          </article>
-          <article className="health-card health-blue">
-            <div className="health-icon">♢</div>
-            <div>
-              <strong>{incidents.length}</strong>
-              <span>Active Incidents</span>
-              <small>Currently reported as open</small>
-            </div>
-          </article>
-        </section>
-
-        <section className="trend-grid" id="trends">
-          {metricCards.map((metric, index) => (
-            <article
-              className={`metric-panel metric-panel-${index}`}
-              key={metric.key}
-              style={{ "--metric-color": metric.color }}
-            >
-              <div className="metric-panel-head">
-                <div className="metric-icon">
-                  {index === 0 ? "▦" : index === 1 ? "▣" : "▤"}
-                </div>
-                <div className="metric-name">
-                  <h2>{metric.title}</h2>
-                  <p>{metric.description}</p>
-                </div>
-                <span className={`freshness-badge ${metricFreshness(metric.key).className}`}>
-                  <i />{metricFreshness(metric.key).label}
-                </span>
+        {/* ---- Stat cards (numbers only) ---- */}
+        <section className="stat-grid" id="overview">
+          {statCards.map((card) => (
+            <article className="stat-card" key={card.id}>
+              <div className="stat-icon">
+                <Icon name={card.icon} size={26} />
               </div>
-
-              <div className="metric-current">
-                <strong>
-                  {latestValue(metric.key)}
-                  {latestValue(metric.key) !== "--" ? "%" : ""}
-                </strong>
-                <small>Latest</small>
+              <div className="stat-body">
+                <span className="stat-label">{card.label}</span>
+                <strong className="stat-value">{card.value}</strong>
+                <small className="stat-foot">{card.foot}</small>
               </div>
-
-              <MetricTrendChart
-                title={metric.title}
-                metric={metric.key}
-                points={metrics?.[metric.key]}
-                color={metric.color}
-              />
-
-              <p className="metric-samples">
-                {(metrics?.[metric.key] || []).slice(-30).length} samples
-                <span> · </span>{metric.key}
-              </p>
             </article>
           ))}
         </section>
 
+        {/* ---- Big chart ---- */}
+        <section className="panel chart-panel" id="trends">
+          <div className="panel-heading">
+            <span className="panel-icon"><Icon name="cpu" size={24} /></span>
+            <div>
+              <h2>{chartTitle}</h2>
+              <p>Real-time CloudWatch metrics from your EC2 instance</p>
+            </div>
+            <label className="select-wrap">
+              <select
+                value={chartMetric}
+                onChange={(event) => setChartMetric(event.target.value)}
+                aria-label="Choose metric"
+              >
+                <option value="ALL">All Metrics</option>
+                {metricCards.map((m) => (
+                  <option key={m.key} value={m.key}>{m.label}</option>
+                ))}
+              </select>
+              <Icon name="down" size={16} />
+            </label>
+          </div>
+
+          <UtilizationChart series={chartSeries} />
+        </section>
+
+        {/* ---- Three summary panels ---- */}
+        <section className="tri-grid">
+          <article className="panel">
+            <div className="panel-heading">
+              <span className="panel-icon"><Icon name="bell" size={20} /></span>
+              <h2>Recent Incidents</h2>
+              <a className="view-all" href="#incident-history">
+                View All <Icon name="arrow" size={14} />
+              </a>
+            </div>
+
+            {recentIncidents.length === 0 ? (
+              <p className="empty-copy">No incidents recorded yet.</p>
+            ) : (
+              recentIncidents.map((incident, index) => {
+                const resolved = incident.status === "RESOLVED";
+                return (
+                  <div
+                    className={`list-row ${index === 0 && !resolved ? "is-active" : ""}`}
+                    key={incident.id}
+                  >
+                    <i className={`row-dot ${resolved ? "grey" : "purple"}`} />
+                    <div className="row-main">
+                      <strong>#{incident.id} — {incident.metric}</strong>
+                      <span>{incident.message}</span>
+                    </div>
+                    <div className="row-side">
+                      <span className={`pill ${resolved ? "grey" : "purple"}`}>
+                        {incident.status}
+                      </span>
+                      <small>
+                        {timeAgo(resolved ? incident.resolved_at || incident.created_at : incident.created_at)}
+                      </small>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </article>
+
+          <article className="panel">
+            <div className="panel-heading">
+              <span className="panel-icon"><Icon name="box" size={20} /></span>
+              <h2>Metric Health</h2>
+              <a className="view-all" href="#trends">
+                {freshMetricCount}/{healthSummary.length} live <Icon name="arrow" size={14} />
+              </a>
+            </div>
+
+            {metricCards.map((m) => {
+              const fresh = metricFreshness(m.key);
+              const value = latestValue(m.key);
+              return (
+                <div className="list-row" key={m.key}>
+                  <i className={`row-dot ${pillTone[fresh.className]}`} />
+                  <div className="row-main">
+                    <strong>{m.title}</strong>
+                    <span>{m.description}</span>
+                  </div>
+                  <div className="row-side">
+                    <span className={`pill ${pillTone[fresh.className]}`}>
+                      {fresh.label}
+                    </span>
+                    <small>{value === "--" ? "--" : `${value}%`}</small>
+                  </div>
+                </div>
+              );
+            })}
+          </article>
+
+          <article className="panel">
+            <div className="panel-heading">
+              <span className="panel-icon"><Icon name="bulb" size={20} /></span>
+              <h2>Recommendations</h2>
+              <a className="view-all" href="#active-incidents">
+                View All <Icon name="arrow" size={14} />
+              </a>
+            </div>
+
+            {incidents.length === 0 ? (
+              <p className="empty-copy">
+                No active incidents, so there is nothing to remediate right now.
+              </p>
+            ) : (
+              incidents.slice(0, 3).map((incident) => {
+                const priority = priorityOf(incident.severity);
+                const recommendation = recommendations[incident.id];
+                return (
+                  <button
+                    type="button"
+                    className="list-row rec-row"
+                    key={incident.id}
+                    onClick={() => requestRemediation(incident.id)}
+                    disabled={Boolean(loading[incident.id])}
+                  >
+                    <span className="rec-icon"><Icon name="upright" size={22} /></span>
+                    <div className="row-main">
+                      <strong>
+                        {loading[incident.id]
+                          ? "Generating…"
+                          : recommendation?.action || "Recommend remediation"}
+                      </strong>
+                      <span>
+                        {recommendation?.message ||
+                          `#${incident.id} ${incident.metric}: ${incident.message}`}
+                      </span>
+                    </div>
+                    <span className={`pill ${priority.tone}`}>{priority.label}</span>
+                  </button>
+                );
+              })
+            )}
+          </article>
+        </section>
+
+        {/* ---- Existing detail panels (unchanged behaviour) ---- */}
         <section className="operations-grid">
           <article className="panel active-panel" id="active-incidents">
             <div className="panel-heading">
-              <span className="panel-icon">♧</span>
+              <span className="panel-icon"><Icon name="bell" size={20} /></span>
               <div>
                 <h2>Active Incidents</h2>
                 <p>Real-time detection of infrastructure issues</p>
@@ -1011,7 +1179,7 @@ function App() {
                   <h3>No active incidents detected</h3>
                   <p>All monitored metrics are within normal thresholds.</p>
                 </div>
-                <div className="clear-shield">♢</div>
+                <div className="clear-shield"><Icon name="shield" size={64} /></div>
               </div>
             ) : (
               incidents.map((incident) => (
@@ -1054,12 +1222,14 @@ function App() {
 
           <article className="panel history-panel" id="incident-history">
             <div className="panel-heading">
-              <span className="panel-icon">▤</span>
+              <span className="panel-icon"><Icon name="clock" size={20} /></span>
               <div>
                 <h2>Incident History</h2>
                 <p>Past incidents and their resolution status</p>
               </div>
-              <a className="view-all" href="#timeline">View All</a>
+              <a className="view-all" href="#timeline">
+                View All <Icon name="arrow" size={14} />
+              </a>
             </div>
 
             {history.length === 0 ? (
@@ -1117,18 +1287,13 @@ function App() {
 
         <section className="panel timeline-panel" id="timeline">
           <div className="panel-heading">
-            <span className="panel-icon">♧</span>
+            <span className="panel-icon"><Icon name="activity" size={20} /></span>
             <div>
               <h2>Incident Timeline</h2>
               <p>
                 Recorded detection, diagnosis, remediation audit, and
                 recovery events from incident history.
               </p>
-            </div>
-            <div className="timeline-art" aria-hidden="true">
-              <div className="timeline-server"><i /><i /><i /></div>
-              <span>♢</span>
-              <div className="timeline-server"><i /><i /><i /></div>
             </div>
           </div>
 
