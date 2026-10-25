@@ -1720,3 +1720,818 @@ p {
 .timeline-events h4 {
   margin-bottom: 5px;
 }
+
+
+
+/* ==========================================================
+   NEXORA LIGHT THEME — CREAM + DUSTY PINK + BURGUNDY
+   Appended theme overrides. Original layout and responsive
+   rules above are intentionally preserved.
+   ========================================================== */
+
+:root {
+  color-scheme: light;
+  --bg: #fff8f0;
+  --panel: #ffffff;
+  --panel2: #fff3ed;
+  --line: #e5c6c3;
+  --blue: #8d526d;
+  --cyan: #b87591;
+  --muted: #795d6c;
+  --green: #8d526d;
+  --amber: #b87591;
+  --purple: #6b294f;
+  color: #3a0f34;
+  background: #fff8f0;
+}
+
+body {
+  color: #3a0f34;
+  background:
+    radial-gradient(ellipse at 68% 0%, rgba(216, 167, 167, 0.24), transparent 38%),
+    radial-gradient(ellipse at 38% 42%, rgba(141, 82, 109, 0.06), transparent 44%),
+    #fff8f0;
+}
+
+/* Main shell: keep the original grid dimensions and layout */
+.main-content {
+  color: #3a0f34;
+}
+.main-content:before {
+  background: radial-gradient(ellipse at 82% 35%, rgba(216, 167, 167, 0.24), transparent 48%);
+}
+
+/* Sidebar */
+.sidebar {
+  border-color: #6b294f;
+  background: linear-gradient(180deg, #4b1a42, #3a0f34 65%, #2d0b28);
+  box-shadow: inset 0 0 28px rgba(216, 167, 167, 0.08);
+}
+.sidebar-brand {
+  border-bottom-color: rgba(243, 222, 222, 0.25);
+  color: #fff8f0;
+}
+.brand-cloud {
+  color: #e7bfc2;
+  text-shadow: none;
+}
+.sidebar-link {
+  color: #f3dede;
+}
+.sidebar-link:hover,
+.sidebar-link.active {
+  color: #3a0f34;
+  background: linear-gradient(100deg, #e7bfc2, #d8a7a7);
+  border-color: #f3dede;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+.nav-icon {
+  color: #e7bfc2;
+  text-shadow: none;
+}
+.sidebar-link.active .nav-icon {
+  color: #3a0f34;
+}
+.sidebar-art {
+  background:
+    radial-gradient(ellipse at 48% 83%, rgba(216, 167, 167, 0.22), transparent 47%),
+    url("./assets/nexora/sidebar-reference.png") center / 100% 100% no-repeat;
+}
+.sidebar-art:before {
+  border-top-color: rgba(243, 222, 222, 0.2);
+}
+.sidebar-caption h2 {
+  color: #e7bfc2;
+  text-shadow: none;
+}
+.sidebar-caption p {
+  color: #f3dede;
+}
+.sidebar-caption b {
+  color: #e7bfc2;
+}
+
+/* Top bar and search */
+.search-box,
+.top-status {
+  color: #3a0f34;
+  border-color: #e5c6c3;
+  background: rgba(255, 255, 255, 0.88);
+}
+.search-box span,
+.refresh-symbol,
+.topbar-bell {
+  color: #8d526d;
+  text-shadow: none;
+}
+.search-box input {
+  color: #3a0f34;
+}
+.search-box input::placeholder,
+.updated-label small {
+  color: #795d6c;
+}
+.top-status i,
+.freshness-badge i {
+  background: #8d526d;
+  box-shadow: none;
+}
+.top-status.critical i {
+  background: #6b294f;
+  box-shadow: none;
+}
+.topbar-avatar {
+  color: #fff8f0;
+  border-color: #e5c6c3;
+  background: linear-gradient(135deg, #8d526d, #3a0f34);
+}
+
+/* Hero */
+.hero-section {
+  border: 1px solid #e5c6c3;
+  border-radius: 22px;
+  background: linear-gradient(120deg, #fffdfb 0%, #fff3ed 58%, #f3dede 100%);
+  box-shadow: 0 8px 24px rgba(58, 15, 52, 0.05);
+}
+.hero-copy > span,
+.hero-copy h1,
+.hero-copy p {
+  color: #3a0f34;
+}
+.hero-copy h1 {
+  background: linear-gradient(180deg, #8d526d, #3a0f34);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: none;
+}
+.hero-copy p {
+  color: #795d6c;
+}
+.hero-art {
+  background:
+    radial-gradient(ellipse at 75% 70%, rgba(216, 167, 167, 0.3), transparent 44%),
+    url("./assets/nexora/hero-reference.png") center / 100% 100% no-repeat;
+}
+
+/* Summary cards */
+.health-card {
+  color: #3a0f34;
+  border-color: #e5c6c3;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #ffffff, #fff3ed);
+  box-shadow: 0 6px 20px rgba(58, 15, 52, 0.055);
+}
+.health-icon {
+  color: #8d526d;
+  border-color: #e5c6c3;
+  background: #f3dede;
+  text-shadow: none;
+  box-shadow: none;
+}
+.health-card strong {
+  color: #3a0f34;
+}
+.health-card span {
+  color: #6b294f;
+}
+.health-card small {
+  color: #795d6c;
+}
+.health-green,
+.health-amber,
+.health-purple,
+.health-blue {
+  --tone: #8d526d;
+  --card-border: #e5c6c3;
+  --card-glow: rgba(216, 167, 167, 0.16);
+  --icon-bg: #f3dede;
+}
+
+/* Metric charts */
+.metric-panel {
+  --metric-color: #8d526d;
+  border-color: #e5c6c3;
+  border-radius: 17px;
+  background:
+    radial-gradient(ellipse at 95% 95%, rgba(216, 167, 167, 0.16), transparent 40%),
+    linear-gradient(145deg, #ffffff, #fff3ed);
+  box-shadow: 0 7px 22px rgba(58, 15, 52, 0.06);
+}
+.metric-icon {
+  border-color: #e5c6c3;
+  background: #f3dede;
+  color: #6b294f;
+  text-shadow: none;
+}
+.metric-name h2,
+.metric-current strong {
+  color: #3a0f34;
+}
+.metric-name p,
+.metric-current small,
+.metric-samples {
+  color: #795d6c;
+}
+.metric-samples span {
+  color: #8d526d;
+}
+.freshness-badge {
+  color: #6b294f;
+  background: #f3dede;
+}
+.freshness-badge.stale,
+.freshness-badge.no-data {
+  color: #6b294f;
+  background: #f3dede;
+}
+.freshness-badge.stale i,
+.freshness-badge.no-data i {
+  background: #b87591;
+  box-shadow: none;
+}
+.trend-grid-line {
+  stroke: #ead8d5;
+}
+.trend-axis-label {
+  fill: #795d6c;
+}
+.trend-threshold-line {
+  stroke: #b87591;
+}
+.trend-empty {
+  color: #795d6c;
+}
+
+/* Panels and incidents */
+.panel {
+  border-color: #e5c6c3;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #ffffff, #fff8f0);
+  box-shadow: 0 7px 22px rgba(58, 15, 52, 0.045);
+}
+.panel-heading h2,
+.panel-heading h3 {
+  color: #3a0f34;
+}
+.panel-heading p {
+  color: #795d6c;
+}
+.panel-icon {
+  color: #8d526d;
+  text-shadow: none;
+}
+.active-panel {
+  background-image:
+    linear-gradient(90deg, rgba(255, 248, 240, 0.97), rgba(255, 248, 240, 0.88) 62%, rgba(255, 248, 240, 0.55)),
+    url("./assets/nexora/incident-shield-reference.png");
+  border-color: #e5c6c3;
+}
+.incident-clear {
+  border-color: #e5c6c3;
+  background: linear-gradient(100deg, #f3dede, #fff8f0);
+}
+.clear-check {
+  background: #8d526d;
+  color: #fff8f0;
+  box-shadow: none;
+}
+.incident-clear h3 {
+  color: #3a0f34;
+}
+.incident-clear p {
+  color: #795d6c;
+}
+.clear-shield {
+  color: #b87591;
+  text-shadow: none;
+}
+.incident-card,
+.history-item,
+.remediation-result,
+.detail-panel {
+  color: #3a0f34;
+  border-color: #e5c6c3;
+  background: #ffffff;
+}
+.incident-card strong,
+.history-copy strong,
+.remediation-result h3,
+.detail-panel summary {
+  color: #3a0f34;
+}
+.incident-card p,
+.incident-card small,
+.history-copy p,
+.history-copy small,
+.audit-record p,
+.incident-details,
+.empty-copy {
+  color: #795d6c;
+}
+.incident-card > button,
+.history-actions button,
+.evidence-actions button,
+.view-all {
+  color: #fff8f0;
+  border-color: #6b294f;
+  background: linear-gradient(110deg, #8d526d, #3a0f34);
+  box-shadow: none;
+}
+.view-all {
+  color: #6b294f;
+  background: #f3dede;
+  border-color: #e5c6c3;
+}
+.history-check,
+.history-check.resolved {
+  color: #fff8f0;
+  background: #8d526d;
+}
+.history-check.open {
+  background: #b87591;
+}
+.history-copy small b {
+  color: #6b294f;
+}
+.resolved-badge,
+.resolved-badge.open {
+  color: #6b294f;
+  background: #f3dede;
+}
+.evidence-note {
+  border-left-color: #b87591;
+  background: #fff3ed;
+  color: #6b294f;
+}
+.error {
+  border-color: #d8a7a7;
+  background: #f8e7e7;
+  color: #6b294f;
+}
+
+/* Tables */
+.table-container th,
+.table-container td {
+  border-bottom-color: #e5c6c3;
+}
+.table-container th {
+  color: #3a0f34;
+  background: #f3dede;
+}
+.table-container td {
+  color: #795d6c;
+}
+
+/* Timeline and event history */
+.timeline-panel {
+  border-color: #e5c6c3;
+}
+.timeline-item:before {
+  background: linear-gradient(#d8a7a7, #8d526d);
+}
+.timeline-marker {
+  border-color: #8d526d;
+  background: #d8a7a7;
+  box-shadow: 0 0 0 4px rgba(216, 167, 167, 0.2);
+}
+.timeline-marker.open {
+  background: #b87591;
+  border-color: #6b294f;
+}
+.timeline-content {
+  border-color: #e5c6c3;
+  background: #ffffff;
+}
+.timeline-item-heading strong,
+.timeline-event-title {
+  color: #3a0f34;
+}
+.timeline-content > p,
+.timeline-content .timeline-time,
+.timeline-event-timestamp {
+  color: #795d6c;
+}
+.timeline-status.resolved,
+.timeline-status.open {
+  color: #6b294f;
+  background: #f3dede;
+}
+.timeline-event-list {
+  color: #3a0f34;
+}
+.timeline-event-list > li > p {
+  color: #795d6c;
+}
+
+/* Footer */
+.platform-footer {
+  border-color: #e5c6c3;
+  background: linear-gradient(140deg, #ffffff, #fff3ed);
+  color: #795d6c;
+}
+.platform-footer h2 {
+  color: #3a0f34;
+}
+.platform-footer p {
+  color: #795d6c;
+}
+
+/* Inputs, focus, and browser scrollbars */
+input,
+select,
+textarea {
+  color: #3a0f34;
+  background: #ffffff;
+  border-color: #e5c6c3;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #a88b9a;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #8d526d;
+  box-shadow: 0 0 0 3px rgba(216, 167, 167, 0.22);
+}
+::selection {
+  color: #fff8f0;
+  background: #6b294f;
+}
+* {
+  scrollbar-color: #d8a7a7 #fff3ed;
+}
+*::-webkit-scrollbar-track {
+  background: #fff3ed;
+}
+*::-webkit-scrollbar-thumb {
+  background: #d8a7a7;
+  border-radius: 10px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #8d526d;
+}
+
+/* =====================================================
+   NEXORA — WARM BEIGE SURFACES
+   Keeps burgundy + dusty pink; removes bright white.
+   Paste at the VERY END of App.css.
+   ===================================================== */
+
+:root {
+  --bg: #F3E6D8;
+  --panel: #F8EEE3;
+  --panel2: #EFE0D2;
+  --line: #DFC1B8;
+
+  color: #3A0F34;
+  background: #F3E6D8;
+}
+
+body {
+  color: #3A0F34;
+  background:
+    radial-gradient(
+      ellipse at 75% 8%,
+      rgba(216, 167, 167, 0.24),
+      transparent 42%
+    ),
+    linear-gradient(135deg, #F3E6D8, #F7EAE0 55%, #EEDBD2);
+}
+
+/* Main dashboard background */
+.main-content {
+  background: transparent;
+}
+
+.main-content:before {
+  background: radial-gradient(
+    ellipse at 82% 35%,
+    rgba(216, 167, 167, 0.20),
+    transparent 48%
+  );
+}
+
+/* Hero banner */
+.hero-section {
+  background: linear-gradient(
+    120deg,
+    #FAF0E5 0%,
+    #F5E5D9 58%,
+    #EED5D2 100%
+  );
+  border-color: #E2C2B9;
+  box-shadow: 0 8px 24px rgba(58, 15, 52, 0.045);
+}
+
+.hero-copy > span {
+  color: #3A0F34;
+}
+
+.hero-copy p {
+  color: #795D6C;
+}
+
+.hero-art {
+  background:
+    radial-gradient(
+      ellipse at 75% 70%,
+      rgba(216, 167, 167, 0.24),
+      transparent 44%
+    ),
+    url("./assets/nexora/hero-reference.png") center / 100% 100% no-repeat;
+}
+
+/* Summary cards */
+.health-card {
+  background: linear-gradient(
+    135deg,
+    #F8EEE3,
+    #F3E3D8
+  );
+  border-color: #E2C2B9;
+  box-shadow: 0 6px 20px rgba(58, 15, 52, 0.045);
+}
+
+.health-icon {
+  background: #EBD3D1;
+  border-color: #DFC0BC;
+  color: #8D526D;
+}
+
+/* CPU, memory and disk cards */
+.metric-panel {
+  background: linear-gradient(
+    145deg,
+    #F9EFE5,
+    #F1E0D6
+  );
+  border-color: #E2C2B9;
+  box-shadow: 0 7px 22px rgba(58, 15, 52, 0.045);
+}
+
+.metric-icon {
+  background: #EBD3D1;
+  border-color: #DFC0BC;
+  color: #6B294F;
+}
+
+.trend-grid-line {
+  stroke: #E3CFC5;
+}
+
+.trend-axis-label {
+  fill: #795D6C;
+}
+
+.trend-empty {
+  color: #795D6C;
+}
+
+/* Active incidents and incident history panels */
+.panel {
+  background: linear-gradient(
+    145deg,
+    #F8EEE3,
+    #F2E3D8
+  );
+  border-color: #E2C2B9;
+  box-shadow: 0 7px 22px rgba(58, 15, 52, 0.04);
+}
+
+.active-panel {
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(248, 238, 227, 0.97),
+      rgba(248, 238, 227, 0.90) 62%,
+      rgba(248, 238, 227, 0.60)
+    ),
+    url("./assets/nexora/incident-shield-reference.png");
+}
+
+/* Incident cards, history items and detail sections */
+.incident-card,
+.history-item,
+.remediation-result,
+.detail-panel,
+.timeline-content {
+  background: #F6E9DE;
+  border-color: #E2C2B9;
+  color: #3A0F34;
+}
+
+.incident-card strong,
+.history-copy strong,
+.remediation-result h3,
+.detail-panel summary,
+.timeline-item-heading strong,
+.timeline-event-title {
+  color: #3A0F34;
+}
+
+.incident-card p,
+.incident-card small,
+.history-copy p,
+.history-copy small,
+.audit-record p,
+.incident-details,
+.empty-copy,
+.timeline-content > p,
+.timeline-content .timeline-time,
+.timeline-event-timestamp {
+  color: #795D6C;
+}
+
+/* Clear incident message */
+.incident-clear {
+  background: linear-gradient(
+    100deg,
+    #EBD3D1,
+    #F6E9DE
+  );
+  border-color: #DFC0BC;
+}
+
+.clear-check {
+  background: #8D526D;
+  box-shadow: none;
+}
+
+/* Buttons */
+.view-all {
+  background: #EBD3D1;
+  border-color: #DFC0BC;
+  color: #6B294F;
+}
+
+.incident-card > button,
+.history-actions button,
+.evidence-actions button {
+  background: linear-gradient(
+    110deg,
+    #8D526D,
+    #3A0F34
+  );
+  border-color: #6B294F;
+  color: #FFF5EB;
+  box-shadow: none;
+}
+
+/* Status labels */
+.freshness-badge,
+.freshness-badge.stale,
+.freshness-badge.no-data,
+.resolved-badge,
+.resolved-badge.open,
+.timeline-status.resolved,
+.timeline-status.open {
+  background: #EBD3D1;
+  color: #6B294F;
+}
+
+.freshness-badge i,
+.freshness-badge.stale i,
+.freshness-badge.no-data i {
+  background: #8D526D;
+  box-shadow: none;
+}
+
+/* Timeline */
+.timeline-content {
+  background: #F6E9DE;
+}
+
+.timeline-item:before {
+  background: linear-gradient(#D8A7A7, #8D526D);
+}
+
+.timeline-marker {
+  background: #D8A7A7;
+  border-color: #8D526D;
+  box-shadow: 0 0 0 4px rgba(216, 167, 167, 0.18);
+}
+
+/* Footer */
+.platform-footer {
+  background: linear-gradient(
+    140deg,
+    #F8EEE3,
+    #EFE0D2
+  );
+  border-color: #E2C2B9;
+  color: #795D6C;
+}
+
+.platform-footer h2 {
+  color: #3A0F34;
+}
+
+.platform-footer p {
+  color: #795D6C;
+}
+
+/* Inputs and search */
+.search-box,
+.top-status {
+  background: #F8EEE3;
+  border-color: #DFC1B8;
+  color: #3A0F34;
+}
+
+.search-box input {
+  color: #3A0F34;
+}
+
+.search-box input::placeholder {
+  color: #967989;
+}
+
+/* Tables */
+.table-container th {
+  background: #EBD9D1;
+  color: #3A0F34;
+}
+
+.table-container td {
+  color: #795D6C;
+}
+
+.table-container th,
+.table-container td {
+  border-bottom-color: #DFC1B8;
+}
+
+/* Error messages */
+.error {
+  background: #F0DCD8;
+  border-color: #D8A7A7;
+  color: #6B294F;
+}
+
+/* Scrollbars */
+* {
+  scrollbar-color: #D8A7A7 #F3E6D8;
+}
+
+*::-webkit-scrollbar-track {
+  background: #F3E6D8;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #D8A7A7;
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #8D526D;
+}
+/* Sidebar flush with the screen — no outer spacing */
+.nexora-app {
+  padding: 0 !important;
+  gap: 0 !important;
+  grid-template-columns: 228px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  margin: 0 !important;
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  border-radius: 0 24px 24px 0;
+  overflow: hidden;
+}
+
+/* Preserve responsive sidebar widths */
+@media (max-width: 1250px) {
+  .nexora-app {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 980px) {
+  .nexora-app {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    border-radius: 0 20px 20px 0;
+  }
+}
+
+@media (max-width: 650px) {
+  .nexora-app {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    border-radius: 0 18px 18px 0;
+  }
+}
+
+
