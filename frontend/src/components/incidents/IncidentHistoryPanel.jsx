@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Icon from "../common/Icon";
 import AuditRecords from "./AuditRecords";
 import ProcessEvidenceView from "./ProcessEvidenceView";
@@ -11,6 +12,9 @@ export default function IncidentHistoryPanel({
   onFetchAudit,
   onFetchEvidence,
 }) {
+  const [showAll, setShowAll] = useState(false);
+  const displayHistory = showAll ? history : history.slice(0, 3);
+
   return (
     <article className="panel history-panel" id="incident-history">
       <div className="panel-heading">
@@ -19,15 +23,19 @@ export default function IncidentHistoryPanel({
           <h2>Incident History</h2>
           <p>Past incidents and their resolution status</p>
         </div>
-        <a className="view-all" href="#timeline">
-          View All <Icon name="arrow" size={14} />
-        </a>
+        <button
+          className="view-all"
+          onClick={() => setShowAll(!showAll)}
+          aria-label={showAll ? "Show fewer incidents" : "View all incidents"}
+        >
+          {showAll ? "Show Less" : "View All"} <Icon name="arrow" size={14} />
+        </button>
       </div>
 
-      {history.length === 0 ? (
+      {displayHistory.length === 0 ? (
         <p className="empty-copy">No incident history available.</p>
       ) : (
-        history.map((incident) => (
+        displayHistory.map((incident) => (
           <div className="history-item" key={incident.id}>
             <div className="history-row">
               <span className={`history-check ${incident.status === "RESOLVED" ? "resolved" : "open"}`}>
@@ -76,6 +84,12 @@ export default function IncidentHistoryPanel({
             )}
           </div>
         ))
+      )}
+
+      {!showAll && history.length > 3 && (
+        <p className="empty-copy" style={{ textAlign: "center", marginTop: 10 }}>
+          {history.length - 3} more incident(s) in storage. Click "View All" to see them.
+        </p>
       )}
     </article>
   );

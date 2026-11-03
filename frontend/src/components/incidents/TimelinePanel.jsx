@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Icon from "../common/Icon";
 import { formatTimelineTime } from "../../utils/helpers";
 
@@ -8,6 +9,9 @@ export default function TimelinePanel({
   timelineErrors,
   onFetchTimeline,
 }) {
+  const [showAll, setShowAll] = useState(false);
+  const displayHistory = showAll ? history : history.slice(0, 3);
+
   return (
     <section className="panel timeline-panel" id="timeline">
       <div className="panel-heading">
@@ -19,13 +23,20 @@ export default function TimelinePanel({
             recovery events from incident history.
           </p>
         </div>
+        <button
+          className="view-all"
+          onClick={() => setShowAll(!showAll)}
+          aria-label={showAll ? "Show fewer incidents" : "View all incidents"}
+        >
+          {showAll ? "Show Less" : "View All"} <Icon name="arrow" size={14} />
+        </button>
       </div>
 
       <div className="timeline-list">
-        {history.length === 0 ? (
+        {displayHistory.length === 0 ? (
           <p>No timeline events available yet.</p>
         ) : (
-          history.map((incident) => {
+          displayHistory.map((incident) => {
             const events = timelineHistory[incident.id];
 
             return (
@@ -191,6 +202,12 @@ export default function TimelinePanel({
           })
         )}
       </div>
+
+      {!showAll && history.length > 3 && (
+        <p className="empty-copy" style={{ textAlign: "center", marginTop: 10 }}>
+          {history.length - 3} more incident(s) in storage. Click "View All" to see them.
+        </p>
+      )}
     </section>
   );
 }
