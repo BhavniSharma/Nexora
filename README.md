@@ -1,17 +1,5 @@
 # ☁️ Nexora — Cloud Incident Intelligence & Reliability Platform
 
-\<p align="center">
-&#x20; \<strong>Monitor. Detect. Diagnose. Recover.\</strong>
-\</p>
-
-\<p align="center">
-&#x20; An AWS-focused cloud monitoring and incident intelligence platform designed to improve infrastructure visibility, detect abnormal behaviour, and support faster incident response.
-\</p>
-
----
-
-## Overview
-
 **Nexora** is a Cloud & DevOps major project that focuses on infrastructure monitoring, incident detection, and cloud reliability.
 
 It brings AWS infrastructure metrics, monitoring insights, incident history, and diagnostic capabilities together in a unified dashboard.
