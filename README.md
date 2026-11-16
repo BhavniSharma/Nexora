@@ -278,6 +278,4 @@ GitHub: [BhavniSharma](https://github.com/BhavniSharma)
 
 **Project:** Nexora — Cloud Incident Intelligence & Reliability Platform
 
----
 
-\<p align="center">   \<strong>Built with Python, React & AWS ☁️\</strong> \</p>
